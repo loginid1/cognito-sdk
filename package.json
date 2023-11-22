@@ -1,0 +1,21 @@
+{
+	"name": "cognito-web-sdk",
+	"version": "0.0.1",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc --noEmit & tsup ./src/index.ts --no-config  --sourcemap --format esm,cjs --dts --minify",
+		"lint": "eslint 'src/**/*.ts?(x)'"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"tsup": "^8.0.1",
+		"typescript": "^5.3.2"
+	},
+	"dependencies": {
+		"amazon-cognito-identity-js": "^6.3.7"
+	}
+}
