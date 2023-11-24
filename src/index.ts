@@ -1,5 +1,5 @@
 import LoginIDCognitoWebSDK from "./loginid";
-import {CustomAuthenticationOptions} from "./cognito";
+import { CustomAuthenticationOptions } from "./cognito";
 
-export type {CustomAuthenticationOptions};
-export default LoginIDCognitoWebSDK;
+export type { CustomAuthenticationOptions };
+export { LoginIDCognitoWebSDK };
