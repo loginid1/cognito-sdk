@@ -1,5 +1,5 @@
 {
-  "name": "cognito-web-sdk",
+  "name": "@loginid/cognito-web-sdk",
   "version": "0.1.0",
   "description": "Cognito Web SDK",
   "homepage": "https://loginid.io",
@@ -29,7 +29,10 @@
     "dist",
     "README.md"
   ],
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "private": false,
   "devDependencies": {
     "ts-loader": "^9.5.1",
     "tsup": "^8.0.1",
