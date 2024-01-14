@@ -1,18 +1,38 @@
 {
   "name": "cognito-web-sdk",
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Cognito Web SDK",
+  "homepage": "https://loginid.io",
+  "main": "/dist/index.js",
+  "module": "/dist/index.js",
+  "types": "/dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config webpack.config.js",
+    "build": "tsc --noEmit & tsup ./src/index.ts --no-config  --sourcemap --format esm,cjs --dts --minify",
     "lint": "eslint 'src/**/*.ts?(x)'"
   },
   "keywords": [],
-  "author": "",
+  "author": "LoginID Inc.",
   "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "private": true,
   "devDependencies": {
     "ts-loader": "^9.5.1",
+    "tsup": "^8.0.1",
     "typescript": "^5.3.2",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"

@@ -6,9 +6,9 @@ module.exports = {
   output: {
     filename: "index.min.js",
     path: path.resolve(__dirname, "dist"),
-    //library: "LoginIDCognitoWebSDK",
-    libraryTarget: "umd",
-    globalObject: "this",
+    library: "LoginIDCognitoWebSDK",
+    //libraryTarget: "umd",
+    //globalObject: "this",
   },
   resolve: {
     extensions: [".ts", ".js"],
