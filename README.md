@@ -19,7 +19,7 @@ npm install @loginid/cognito-web-sdk
 ## How to Use
 
 - visit our [guide](https://docs.loginid.io/Guides/Cognito) for the AWS setup.
-- visit our API Reference documentation for package implementation.
+- visit our [API Reference documentation](https://docs.loginid.io/Client-SDKs/cognito-web-sdk) for package implementation.
 
 ## License
 
@@ -42,3 +42,9 @@ For more details, please refer to the [full text of the ISC License](https://ope
 
 Link to ISC License
 [ISC License (Full Text)](./LICENSE.md)
+
+## Contact and Support
+
+- **Email**: [support@loginid.io](mailto:support@loginid.io)
+- **Community Chat**: [Join our Slack](https://loginidiocommunity.slack.com)
+- **Documentation**: [Read our full documentation](https://docs.loginid.io)
