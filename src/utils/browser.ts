@@ -15,3 +15,10 @@ export const defaultDeviceInfo = (): DeviceInfo => {
 
   return device
 }
+
+/**
+ * Retrieves the user agent string from the browser.
+ */ 
+export const getUserAgent = (): string => {
+  return window.navigator.userAgent
+}

@@ -1,5 +1,5 @@
 import LoginIDSDK from "@loginid/websdk3";
-import {defaultDeviceInfo} from "../utils/bowser";
+import {defaultDeviceInfo, getUserAgent} from "../utils/browser";
 import {CustomAuthenticationOptions, InnerOptions} from "./types";
 import {
 	AuthenticationDetails,
@@ -74,6 +74,7 @@ class Cognito {
 			const fullOptions: InnerOptions = {
 				idToken: idToken,
 				deviceInfo: defaultDeviceInfo(),
+				userAgent: getUserAgent(),
 				user: {
 					...options.displayName && {displayName: options.displayName},
 					...options.usernameType && {usernameType: options.usernameType},

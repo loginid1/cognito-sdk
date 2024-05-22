@@ -11,6 +11,7 @@ export interface CustomAuthenticationOptions {
 export interface InnerOptions extends CustomAuthenticationOptions{
 	idToken?: string;
 	deviceInfo?: DeviceInfo;
+	userAgent?: string;
 	user?: {
 		displayName?: string;
 		usernameType?: UsernameType;
