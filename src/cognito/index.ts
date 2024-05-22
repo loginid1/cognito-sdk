@@ -1,5 +1,6 @@
-import * as webauthn from "../webauthn/";
-import {AttestationOptions, CustomAuthenticationOptions} from "./types";
+import LoginIDSDK from "@loginid/websdk3";
+import {defaultDeviceInfo, getUserAgent} from "../utils/browser";
+import {CustomAuthenticationOptions, InnerOptions} from "./types";
 import {
 	AuthenticationDetails,
 	CognitoUser,
@@ -39,28 +40,6 @@ class Cognito {
 	}
 
 	/**
-	 * Converts CustomAuthenticationOptions to AttestationOptions.
-	 *
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {AttestationOptions} - Attestation options for FIDO2 operations.
-	 */
-	private handleAttestationOptions(
-		options: CustomAuthenticationOptions
-	): AttestationOptions {
-		const attestationOptions: AttestationOptions = {};
-
-		if (options.attestationOptions?.overrideTimeout !== undefined) {
-			attestationOptions["override_timeout_s"] = options.attestationOptions.overrideTimeout;
-		}
-
-		if (options.attestationOptions?.requireResidentKey !== undefined) {
-			attestationOptions["require_usernameless"] = options.attestationOptions.requireResidentKey;
-		}
-
-		return attestationOptions;
-	}
-
-	/**
 	 * Performs custom authentication using FIDO2 for either create or get operations.
 	 *
 	 * @param {string} username - The username of the Cognito user.
@@ -78,6 +57,7 @@ class Cognito {
 		options: CustomAuthenticationOptions,
 	): Promise<CognitoUserSession> {
 		return new Promise((resolve, reject) => {
+			const lid = new LoginIDSDK({baseUrl: "", appId: ""})
 			const authenticationData: IAuthenticationDetailsData = {
 				Username: username,
 				Password: "",
@@ -91,14 +71,22 @@ class Cognito {
 			const user = new CognitoUser(userData);
 
 			const metaData = options.metaData || {};
-			const attestationOptions = this.handleAttestationOptions(options);
+			const fullOptions: InnerOptions = {
+				idToken: idToken,
+				deviceInfo: defaultDeviceInfo(),
+				userAgent: getUserAgent(),
+				user: {
+					...options.displayName && {displayName: options.displayName},
+					...options.usernameType && {usernameType: options.usernameType},
+				}
+			}
 
 			// Callback object for FIDO2_CREATE operation
 			const callbackCreateObj: IAuthenticationCallback = {
 				customChallenge: async function (challengParams: any) {
 					const clientMetadata = {
 						...metaData,
-						attestation_options: JSON.stringify(attestationOptions),
+						options: JSON.stringify(fullOptions),
 						authentication_type: CustomAuthentication.FIDO2_CREATE,
 					};
 
@@ -112,10 +100,10 @@ class Cognito {
 					}
 
 					const publicKey = JSON.parse(challengParams.public_key);
-					const result = await webauthn.create(publicKey);
+					const result = await lid.createNavigatorCredential(publicKey);
 
 					user.sendCustomChallengeAnswer(
-						JSON.stringify({...result, id_token: idToken}),
+						JSON.stringify({...result}),
 						this,
 						clientMetadata
 					);
@@ -135,6 +123,7 @@ class Cognito {
 				customChallenge: async function (challengParams: any) {
 					const clientMetadata = {
 						...metaData,
+						options: JSON.stringify(fullOptions),
 						authentication_type: CustomAuthentication.FIDO2_GET,
 					};
 
@@ -148,7 +137,7 @@ class Cognito {
 					}
 
 					const publicKey = JSON.parse(challengParams.public_key);
-					const result = await webauthn.get(publicKey);
+					const result = await lid.getNavigatorCredential(publicKey);
 
 					user.sendCustomChallengeAnswer(
 						JSON.stringify({...result}),

@@ -1,12 +1,19 @@
+import {DeviceInfo} from "../utils/types";
+
+export type UsernameType = "email" | "phone";
+
 export interface CustomAuthenticationOptions {
 	metaData?: object;
-	attestationOptions?: {
-		requireResidentKey?: boolean;
-		overrideTimeout?: number;
-	}
+	displayName?: string;
+	usernameType?: UsernameType;
 }
 
-export interface AttestationOptions {
-	override_timeout_s?: number;
-	require_usernameless?: boolean;
+export interface InnerOptions extends CustomAuthenticationOptions{
+	idToken?: string;
+	deviceInfo?: DeviceInfo;
+	userAgent?: string;
+	user?: {
+		displayName?: string;
+		usernameType?: UsernameType;
+	}
 }
