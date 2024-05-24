@@ -1,4 +1,7 @@
+import LoginID from "@loginid/websdk3";
 import {CognitoUserSession} from "amazon-cognito-identity-js";
+import {parseJwt} from "../utils/encodes";
+import {AuthCompleteRequestBody, AuthInit} from "./types";
 import Cognito, {
 	CustomAuthentication,
 	CustomAuthenticationOptions,
@@ -58,6 +61,53 @@ class LoginIDCognitoWebSDK {
 			CustomAuthentication.FIDO2_GET,
 			options || {}
 		);
+	}
+
+	/**
+	 * Signs in using an access token for the specified username.
+	 *
+	 * This method performs a custom authentication process using an access token. 
+	 * The access token, typically a JWT, is used to authenticate the user without 
+	 * requiring their username and password, providing a secure and streamlined login experience.
+	 *
+	 * @param {string} accessJwt - The access token (JWT) associated with the user.
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+	 */
+	public async signInWithAccessToken(
+		accessJwt: string,
+		options?: CustomAuthenticationOptions
+	): Promise<CognitoUserSession> {
+		const {username} = parseJwt(accessJwt);
+		return this.cognito.customAuthenticationPasskey(
+			username,
+			accessJwt,
+			CustomAuthentication.ACCESS_JWT,
+			options || {}
+		);
+	}
+
+	/**
+	 * Signs in with conditional UI using LoginID SDK.
+	 *
+	 * This method initiates a sign-in process with conditional UI elements 
+	 * using the LoginID SDK. It leverages FIDO2 WebAuthn to provide a secure, 
+	 * usernameless authentication.
+	 *
+	 * @param {AuthInit} init - The initialization parameters for authentication.
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<AuthCompleteRequestBody>} - A promise resolving to the authentication complete request body.
+	 */
+	public async signInWithConditionalUI(
+		init: AuthInit,
+		options?: CustomAuthenticationOptions
+	): Promise<AuthCompleteRequestBody> {
+		const lid = new LoginID({baseUrl: "", appId: ""});
+		const lidOptions = {
+			autoFill: true,
+			...options?.abortSignal && {abortSignal: options.abortSignal},
+		}
+		return await lid.getNavigatorCredential(init, lidOptions);
 	}
 }
 

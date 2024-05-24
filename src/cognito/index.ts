@@ -18,6 +18,7 @@ export enum CustomAuthentication {
 	AUTH_PARAMS = "AUTH_PARAMS",
 	FIDO2_CREATE = "FIDO2_CREATE",
 	FIDO2_GET = "FIDO2_GET",
+	ACCESS_JWT = "JWT_ACCESS",
 }
 
 /**
@@ -43,7 +44,7 @@ class Cognito {
 	 * Performs custom authentication using FIDO2 for either create or get operations.
 	 *
 	 * @param {string} username - The username of the Cognito user.
-	 * @param {string} idToken - The ID token associated with the user.
+	 * @param {string} token - The token associated with the user.
 	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
 	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
 	 * @param {object} options.metaData - Additional metadata for the authentication process.
@@ -52,7 +53,7 @@ class Cognito {
 	 */
 	public async customAuthenticationPasskey(
 		username: string,
-		idToken: string,
+		token: string,
 		type: CustomAuthentication,
 		options: CustomAuthenticationOptions,
 	): Promise<CognitoUserSession> {
@@ -72,7 +73,7 @@ class Cognito {
 
 			const metaData = options.metaData || {};
 			const fullOptions: InnerOptions = {
-				idToken: idToken,
+				idToken: token,
 				deviceInfo: defaultDeviceInfo(),
 				userAgent: getUserAgent(),
 				user: {
@@ -155,6 +156,40 @@ class Cognito {
 				},
 			};
 
+			// Callback object for ACCESS_JWT operation
+			const callbackJWTObj: IAuthenticationCallback = {
+				customChallenge: function (challengParams: any) {
+					const clientMetadata = {
+						...metaData,
+						options: JSON.stringify(fullOptions),
+						authentication_type: CustomAuthentication.ACCESS_JWT,
+					};
+
+					if (challengParams?.challenge === CustomAuthentication.AUTH_PARAMS) {
+						user.sendCustomChallengeAnswer(
+							CustomAuthentication.AUTH_PARAMS,
+							this,
+							clientMetadata
+						);
+						return;
+					}
+
+					user.sendCustomChallengeAnswer(
+						token,
+						this,
+						clientMetadata
+					);
+				},
+
+				onSuccess: function (session: CognitoUserSession) {
+					resolve(session);
+				},
+
+				onFailure: function (err) {
+					reject(err);
+				},
+			};
+
 			// Initiating custom authentication based on the specified type
 			switch (type) {
 				case CustomAuthentication.FIDO2_CREATE:
@@ -165,6 +200,11 @@ class Cognito {
 				case CustomAuthentication.FIDO2_GET:
 					user.setAuthenticationFlowType("CUSTOM_AUTH");
 					user.initiateAuth(authenticationDetails, callbackGetObj);
+					break;
+
+				case CustomAuthentication.ACCESS_JWT:
+					user.setAuthenticationFlowType("CUSTOM_AUTH");
+					user.initiateAuth(authenticationDetails, callbackJWTObj);
 					break;
 
 				default:
