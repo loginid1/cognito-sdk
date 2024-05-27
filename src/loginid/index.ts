@@ -1,15 +1,12 @@
 import LoginID from "@loginid/websdk3";
 import CognitoPasskeyAPI from "../services/cognitoPasskeys";
-import {CognitoUserSession} from "amazon-cognito-identity-js";
 import {parseJwt} from "../utils/encodes";
+import {CognitoUserSession} from "amazon-cognito-identity-js";
+import {PasskeyCollection} from "../services/models/cognitoPasskeys";
 import Cognito, {
 	CustomAuthentication,
 	CustomAuthenticationOptions,
 } from "../cognito";
-import { 
-	PasskeyCollection,
-	PasskeyResult,
-} from "../services/models/cognitoPasskeys";
 
 /**
  * LoginIDCognitoWebSDK class provides methods for adding and signing in with a passkey using FIDO2 operations.
