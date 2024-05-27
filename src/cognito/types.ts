@@ -6,6 +6,7 @@ export interface CustomAuthenticationOptions {
 	metaData?: object;
 	displayName?: string;
 	usernameType?: UsernameType;
+	abortSignal?: AbortSignal;
 }
 
 export interface InnerOptions extends CustomAuthenticationOptions{

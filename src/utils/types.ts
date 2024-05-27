@@ -9,3 +9,7 @@ export type DeviceInfo = {
     screenHeight?: number;
     screenWidth?: number;
 };
+
+export interface LoginIDAccessJWT {
+    username: string;
+}
