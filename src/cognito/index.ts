@@ -27,7 +27,6 @@ export enum CustomAuthentication {
  */
 class Cognito {
 	private userPool: CognitoUserPool;
-	private currentUser: CognitoUser | null = null;
 
 	/**
 	 * Constructor for the Cognito class.
