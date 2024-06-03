@@ -1,6 +1,6 @@
 {
   "name": "@loginid/cognito-web-sdk",
-  "version": "1.1.1",
+  "version": "1.3.0",
   "description": "Cognito Web SDK",
   "homepage": "https://loginid.io",
   "main": "./dist/index.js",
