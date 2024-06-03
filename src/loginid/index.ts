@@ -1,8 +1,8 @@
 import LoginID from "@loginid/websdk3";
 import CognitoPasskeyAPI from "../services/cognitoPasskeys";
 import {parseJwt} from "../utils/encodes";
-import {CognitoUserSession} from "amazon-cognito-identity-js";
 import {PasskeyCollection} from "../services/models/cognitoPasskeys";
+import {CognitoUser, CognitoUserSession} from "amazon-cognito-identity-js";
 import Cognito, {
 	CustomAuthentication,
 	CustomAuthenticationOptions,
@@ -14,6 +14,7 @@ import Cognito, {
 class LoginIDCognitoWebSDK {
 	private cognito: Cognito;
 	private passkeyApi: CognitoPasskeyAPI = new CognitoPasskeyAPI("");
+	private currentCognitoUser: CognitoUser | null = null;
 
 	/**
 	 * Constructor for the LoginIDCognitoWebSDK class.
@@ -115,6 +116,53 @@ class LoginIDCognitoWebSDK {
 		const publicKey: any = await lid.getNavigatorCredential(init, lidOptions);
 		const {jwtAccess} =await this.passkeyApi.passkeyAuthComplete(publicKey);
 		return await this.signInWithAccessToken(jwtAccess, options);
+	}
+
+	/**
+	 * Initializes the email OTP authentication process for a user.
+	 *
+	 * This method initiates the email OTP authentication process for a given email address.
+	 * It sets the current Cognito user and prepares them for completing the OTP verification.
+	 *
+	 * @param {string} email - The email address of the user.
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<null>} - A promise resolving to null upon successful initialization.
+	 */
+	public async initializeEmailOTP(
+		email: string ,options?: CustomAuthenticationOptions
+	): Promise<null> {
+		const user = await this.cognito.customAuthenticationInit(
+			email, 
+			CustomAuthentication.EMAIL_OTP, 
+			options || {}
+		);
+		this.currentCognitoUser = user;
+		return null;
+	}
+
+	/**
+	 * Completes the email OTP authentication process for a user.
+	 *
+	 * This method completes the email OTP authentication process by verifying the OTP provided by the user.
+	 * It finalizes the custom authentication and returns the user session.
+	 *
+	 * @param {string} otp - The one-time password (OTP) received by the user via email.
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<CognitoUserSession | null>} - A promise resolving to the Cognito user session or null if authentication fails.
+	 * @throws {Error} - Throws an error if no user is initialized for email OTP.
+	 */
+	public async completeEmailOTP(
+		otp: string ,options?: CustomAuthenticationOptions
+	): Promise<CognitoUserSession | null> {
+		if (this.currentCognitoUser === null) {
+			throw new Error("No user initialized for email OTP");
+		}
+		return this.cognito.customAuthenticationComplete(
+			this.currentCognitoUser,
+			otp,
+			CustomAuthentication.EMAIL_OTP,
+			options || {}
+		)
 	}
 
 	/**
