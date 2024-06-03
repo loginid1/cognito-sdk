@@ -15,10 +15,11 @@ import {
  * Enumeration representing different types of custom authentication operations.
  */
 export enum CustomAuthentication {
+	ACCESS_JWT = "JWT_ACCESS",
+	EMAIL_OTP = "EMAIL_OTP",
 	AUTH_PARAMS = "AUTH_PARAMS",
 	FIDO2_CREATE = "FIDO2_CREATE",
 	FIDO2_GET = "FIDO2_GET",
-	ACCESS_JWT = "JWT_ACCESS",
 }
 
 /**
@@ -26,6 +27,7 @@ export enum CustomAuthentication {
  */
 class Cognito {
 	private userPool: CognitoUserPool;
+	private currentUser: CognitoUser | null = null;
 
 	/**
 	 * Constructor for the Cognito class.
@@ -210,6 +212,124 @@ class Cognito {
 				default:
 					throw new Error("Invalid custom authentication type");
 			}
+		});
+	}
+
+	/**
+	 * Initiates custom authentication for the specified username.
+	 *
+	 * @param {string} username - The username of the Cognito user.
+	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
+	 */
+	public async customAuthenticationInit(
+		username: string,
+		type: CustomAuthentication,
+		options: CustomAuthenticationOptions,
+	): Promise<CognitoUser> {
+		return new Promise((resolve, reject) => {
+			const authenticationData: IAuthenticationDetailsData = {
+				Username: username,
+				Password: "",
+			};
+			const userData: ICognitoUserData = {
+				Username: username,
+				Pool: this.userPool,
+			};
+
+			const authenticationDetails = new AuthenticationDetails(authenticationData);
+			const user = new CognitoUser(userData);
+
+			const metaData = options.metaData || {};
+
+			// Callback object for ACCESS_JWT operation
+			const callbackEmailOTP: IAuthenticationCallback = {
+				customChallenge: function (challengParams: any) {
+					const clientMetadata = {
+						...metaData,
+						authentication_type: CustomAuthentication.EMAIL_OTP,
+					};
+
+					if (challengParams?.challenge === CustomAuthentication.AUTH_PARAMS) {
+						user.sendCustomChallengeAnswer(
+							CustomAuthentication.AUTH_PARAMS,
+							this,
+							clientMetadata
+						);
+						return;
+					} else if (challengParams?.challenge === CustomAuthentication.EMAIL_OTP) {
+						resolve(user);
+					} else {
+						reject(new Error("Invalid custom challenge"));
+					}
+				},
+
+				onSuccess: function () {
+					// Should never reach here but need to satisfy the interface
+					resolve(user);
+				},
+
+				onFailure: function (err) {
+					reject(err);
+				},
+			};
+
+			// Initiating custom authentication based on the specified type
+			switch (type) {
+				case CustomAuthentication.EMAIL_OTP:
+					user.setAuthenticationFlowType("CUSTOM_AUTH");
+					user.initiateAuth(authenticationDetails, callbackEmailOTP);
+					break;
+
+				default:
+					throw new Error("Invalid custom authentication type");
+			}
+		});
+	}
+
+	/**
+	 * Responds to custom authentication challenge for the given username.
+	 *
+	 * @param {string} username - The username of the Cognito user.
+	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
+	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+	 * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
+	 */
+	public async customAuthenticationComplete(
+		user: CognitoUser,
+		answer: string,
+		type: CustomAuthentication,
+		options: CustomAuthenticationOptions,
+	): Promise<CognitoUserSession | null> {
+		return new Promise((resolve, reject) => {
+			const metaData = options.metaData || {};
+			const clientMetadata = {
+				...metaData,
+				authentication_type: type,
+			};
+
+			const callbackObj: IAuthenticationCallback = {
+				customChallenge: async function (_: any) {
+					console.log("Retry...");
+					resolve(null);
+				},
+
+				onSuccess: function (session: CognitoUserSession) {
+					resolve(session);
+				},
+
+				onFailure: function (err) {
+					reject(err);
+				},
+			};
+
+			user.setAuthenticationFlowType("CUSTOM_AUTH");
+			user.sendCustomChallengeAnswer(
+				answer,
+				callbackObj,
+				clientMetadata
+			);
 		});
 	}
 }
