@@ -1,4 +1,5 @@
 import LoginIDSDK from "@loginid/websdk3";
+import LoginIDService from "../services/loginid";
 import {defaultDeviceInfo, getUserAgent} from "../utils/browser";
 import {CustomAuthenticationOptions, InnerOptions} from "./types";
 import {
@@ -27,6 +28,8 @@ export enum CustomAuthentication {
  */
 class Cognito {
 	private userPool: CognitoUserPool;
+	private lidService: LoginIDService;
+	private lid: LoginIDSDK;
 
 	/**
 	 * Constructor for the Cognito class.
@@ -34,7 +37,9 @@ class Cognito {
 	 * @param {string} userPoolId - The ID of the Cognito User Pool.
 	 * @param {string} clientId - The client ID associated with the User Pool.
 	 */
-	constructor(userPoolId: string, clientId: string) {
+	constructor(service: LoginIDService, lid: LoginIDSDK, userPoolId: string, clientId: string) {
+		this.lidService = service;
+		this.lid = lid;
 		this.userPool = new CognitoUserPool({
 			UserPoolId: userPoolId,
 			ClientId: clientId,
@@ -59,7 +64,9 @@ class Cognito {
 		options: CustomAuthenticationOptions,
 	): Promise<CognitoUserSession> {
 		return new Promise((resolve, reject) => {
-			const lid = new LoginIDSDK({baseUrl: "", appId: ""})
+			const lid = this.lid;
+			const lidService = this.lidService;
+
 			const authenticationData: IAuthenticationDetailsData = {
 				Username: username,
 				Password: "",
@@ -101,11 +108,14 @@ class Cognito {
 						return;
 					}
 
-					const publicKey = JSON.parse(challengParams.public_key);
-					const result = await lid.createNavigatorCredential(publicKey);
+					const init = JSON.parse(challengParams.public_key);
+					const publicKey = await lid.createNavigatorCredential(init);
+					const {jwtAccess} = await lidService.passkeyRegComplete(publicKey);
+
+					lid.setJwtCookie(jwtAccess);
 
 					user.sendCustomChallengeAnswer(
-						JSON.stringify({...result}),
+						jwtAccess,
 						this,
 						clientMetadata
 					);
@@ -309,7 +319,7 @@ class Cognito {
 			};
 
 			const callbackObj: IAuthenticationCallback = {
-				customChallenge: async function (_: any) {
+				customChallenge: async function () {
 					console.log("Retry...");
 					resolve(null);
 				},
