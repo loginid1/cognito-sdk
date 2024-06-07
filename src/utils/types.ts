@@ -12,4 +12,5 @@ export type DeviceInfo = {
 
 export interface LoginIDAccessJWT {
     username: string;
+    exp: number;
 }

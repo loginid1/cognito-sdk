@@ -1,7 +1,6 @@
 import LoginID from "@loginid/websdk3";
-import CognitoPasskeyAPI from "../services/cognitoPasskeys";
+import LoginIDService from "../services/loginid";
 import {parseJwt} from "../utils/encodes";
-import {PasskeyCollection} from "../services/models/cognitoPasskeys";
 import {CognitoUser, CognitoUserSession} from "amazon-cognito-identity-js";
 import Cognito, {
 	CustomAuthentication,
@@ -13,7 +12,8 @@ import Cognito, {
  */
 class LoginIDCognitoWebSDK {
 	private cognito: Cognito;
-	private passkeyApi: CognitoPasskeyAPI = new CognitoPasskeyAPI("");
+	private loginIDService: LoginIDService;
+	private lid: LoginID;
 	private currentCognitoUser: CognitoUser | null = null;
 
 	/**
@@ -21,12 +21,29 @@ class LoginIDCognitoWebSDK {
 	 *
 	 * @param {string} userPoolId - The ID of the Cognito User Pool.
 	 * @param {string} clientId - The client ID associated with the User Pool.
-	 * @param {string} passkeyApiBaseUrl - The base URL for the Passkey API.
+	 * @param {string} baseUrl - The base URL for the LoginID API.
 	 */
-	constructor(userPoolId: string, clientId: string, passkeyApiBaseUrl = "") {
-		this.cognito = new Cognito(userPoolId, clientId);
-		if (passkeyApiBaseUrl) {
-			this.passkeyApi = new CognitoPasskeyAPI(passkeyApiBaseUrl);
+	constructor(userPoolId: string, clientId: string, baseUrl: string) {
+		this.loginIDService = new LoginIDService(baseUrl);
+		this.lid = new LoginID({baseUrl: baseUrl, appId: this.loginIDService.getAppId()});
+		this.cognito = new Cognito(this.loginIDService, this.lid, userPoolId, clientId);
+	}
+
+	/**
+	 * Refreshes the LoginID token if the user is not logged in.
+	 *
+	 * This method checks if the user is logged in via the LoginID webhook service. If the user is not logged in,
+	 * it exchanges the provided Cognito ID token for a LoginID token and sets it as a cookie.
+	 *
+	 * @param {string} idToken - The Cognito ID token of the user.
+	 * @returns {Promise<void>} - A promise resolving to void upon successful token refresh.
+	 */
+	private async refreshLoginIDToken(
+		idToken: string
+	) {
+		if (!this.lid.isLoggedIn()) {
+			const {token} = await this.loginIDService.exchangeCognitoToken(idToken);
+			this.lid.setJwtCookie(token);
 		}
 	}
 
@@ -62,12 +79,8 @@ class LoginIDCognitoWebSDK {
 		username: string,
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
-		return this.cognito.customAuthenticationPasskey(
-			username,
-			"",
-			CustomAuthentication.FIDO2_GET,
-			options || {}
-		);
+		const {jwtAccess} = await this.lid.authenticateWithPasskey(username, options)
+		return await this.signInWithAccessToken(jwtAccess, options);
 	}
 
 	/**
@@ -107,14 +120,11 @@ class LoginIDCognitoWebSDK {
 	public async signInWithConditionalUI(
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
-		const lid = new LoginID({baseUrl: "", appId: ""});
 		const lidOptions = {
+			...options,
 			autoFill: true,
-			...options?.abortSignal && {abortSignal: options.abortSignal},
 		}
-		const init = await this.passkeyApi.passkeyAuthInit();
-		const publicKey: any = await lid.getNavigatorCredential(init, lidOptions);
-		const {jwtAccess} =await this.passkeyApi.passkeyAuthComplete(publicKey);
+		const {jwtAccess} = await this.lid.authenticateWithPasskey("", lidOptions);
 		return await this.signInWithAccessToken(jwtAccess, options);
 	}
 
@@ -176,8 +186,9 @@ class LoginIDCognitoWebSDK {
 	 */
 	public async listPasskeys(
 		idToken: string
-	): Promise<PasskeyCollection> {
-		return await this.passkeyApi.listPasskeys(idToken);
+	) {
+		await this.refreshLoginIDToken(idToken);
+		return await this.lid.listPasskeys()
 	}
 
 	/**
@@ -196,7 +207,8 @@ class LoginIDCognitoWebSDK {
 		passkeyId: string,
 		name: string
 	): Promise<null> {
-		return await this.passkeyApi.renamePasskey(idToken, passkeyId, name);
+		await this.refreshLoginIDToken(idToken);
+		return await this.lid.renamePasskey(passkeyId, name);
 	}
 
 	/**
@@ -213,7 +225,8 @@ class LoginIDCognitoWebSDK {
 		idToken: string,
 		passkeyId: string
 	): Promise<null> {
-		return await this.passkeyApi.deletePasskey(idToken, passkeyId);
+		await this.refreshLoginIDToken(idToken);
+		return await this.lid.deletePasskey(passkeyId);
 	}
 }
 
