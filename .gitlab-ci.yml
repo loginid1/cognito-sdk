@@ -60,12 +60,11 @@ linter:
 deploy_npm:
   stage: publish
   script:
-    - npm install -g jq
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+    - apt-get update -y
+    - apt-get install -y jq
+    - echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" > ~/.npmrc
     - export LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
     - jq --arg version "$LATEST_TAG" '.version = $version' package.json > tmp.json && mv tmp.json package.json
-    - npm install
-    - npm run build
     - npm publish
   rules:
   - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "merge_request_event"
