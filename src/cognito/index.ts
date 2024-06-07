@@ -319,7 +319,7 @@ class Cognito {
 			};
 
 			const callbackObj: IAuthenticationCallback = {
-				customChallenge: async function (_: any) {
+				customChallenge: async function () {
 					console.log("Retry...");
 					resolve(null);
 				},
