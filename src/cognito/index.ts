@@ -5,6 +5,7 @@ import {CustomAuthenticationOptions, InnerOptions} from "./types";
 import {
 	AuthenticationDetails,
 	CognitoUser,
+	CognitoUserAttribute,
 	CognitoUserPool,
 	CognitoUserSession,
 	IAuthenticationCallback,
@@ -340,6 +341,68 @@ class Cognito {
 				clientMetadata
 			);
 		});
+	}
+
+	public async signUp(email:string, password:string): Promise<CognitoUser> {
+
+		return new Promise((resolve,reject) => {
+
+			const lowerEmail = email.toLowerCase();
+			const attributeList = [];
+			const dataEmail = {
+				Name: 'email',
+				Value: lowerEmail,
+			};
+			
+			const attributeEmail = new CognitoUserAttribute(dataEmail);
+			
+			attributeList.push(attributeEmail);
+			
+			this.userPool.signUp(
+				lowerEmail,
+				password,
+				attributeList,
+				[],
+				function (err, result) {
+					if (err) {
+						reject(err.message);
+						return;
+					}
+					if(result!=null){
+						resolve(result.user);
+					} else {
+						reject("error empty result")
+					}
+
+				}
+			);
+		});
+	}
+
+	public signOut(){
+		const user = this.userPool.getCurrentUser();
+		if (user!=null) {
+			user.signOut();
+		}
+	}
+
+	public currentUsername() : string | null {
+		const user = this.userPool.getCurrentUser();
+		if (user) {
+			return user.getUsername();
+		}
+		return null;
+	}
+
+	public getCurrentCognitoIdToken() : string | null {
+
+		const user = this.userPool.getCurrentUser();
+		if(user && window){
+			const key = "CognitoIdentityServiceProvider."+this.userPool.getClientId()+ "." + user.getUsername() + ".idToken";
+			const token = localStorage.getItem(key);
+			return token;
+		}
+		return null;
 	}
 }
 
