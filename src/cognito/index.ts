@@ -348,13 +348,13 @@ class Cognito {
 		return new Promise((resolve,reject) => {
 
 			const lowerEmail = email.toLowerCase();
-			var attributeList = [];
-			var dataEmail = {
+			const attributeList = [];
+			const dataEmail = {
 				Name: 'email',
 				Value: lowerEmail,
 			};
 			
-			var attributeEmail = new CognitoUserAttribute(dataEmail);
+			const attributeEmail = new CognitoUserAttribute(dataEmail);
 			
 			attributeList.push(attributeEmail);
 			

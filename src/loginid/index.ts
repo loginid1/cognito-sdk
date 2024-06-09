@@ -66,7 +66,7 @@ class LoginIDCognitoWebSDK {
 		idToken?: string,
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
-		var token = idToken || null;
+		let token = idToken || null;
 		if (!token) {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
@@ -228,7 +228,7 @@ class LoginIDCognitoWebSDK {
 	public async listPasskeys(
 		idToken?: string
 	): Promise<PasskeyCollection> {
-		var token = idToken || null;
+		let token = idToken || null;
 		if (!token) {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
@@ -256,7 +256,7 @@ class LoginIDCognitoWebSDK {
 		name: string,
 		idToken?: string,
 	): Promise<null> {
-		var token = idToken || null;
+		let token = idToken || null;
 		if (!token) {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
@@ -282,7 +282,7 @@ class LoginIDCognitoWebSDK {
 		passkeyId: string,
 		idToken?: string,
 	): Promise<null> {
-		var token = idToken || null;
+		let token = idToken || null;
 		if (!token) {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
