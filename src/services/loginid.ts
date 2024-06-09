@@ -1,10 +1,7 @@
 import HTTP from "./http";
-import {PasskeyAPIError} from "../errors/";
-import {
-    CognitoWebhookResponse,
-    PasskeyResult,
-} from "./models/loginid";
-
+import {PasskeyAPIError} from "../errors";
+import { AuthCompleteRequestBody, AuthInit, AuthInitRequestBody, PasskeyCollection, PasskeyResult, RegCompleteRequestBody, RegInit, RegInitRequestBody } from "@loginid/websdk3";
+import { CognitoWebhookResponse } from "./models/loginid";
 /**
  * API class for handling LoginID FIDO2 service.
  *
@@ -19,6 +16,18 @@ class LoginIDService extends HTTP {
      */
     constructor(baseUrl: string) {
         super(baseUrl);
+    }
+
+    /**
+         * Sets the Authorization header with a bearer token.
+         *
+         * @param {string} token - The bearer token for authentication.
+         * @returns {HeadersInit} - The headers including the Authorization token.
+         */
+    private setBearerToken(token: string): HeadersInit {
+        return {
+            Authorization: `Bearer ${token}`
+        };
     }
 
     /**
@@ -62,18 +71,6 @@ class LoginIDService extends HTTP {
     }
 
     /**
-     * Completes the passkey registration process.
-     *
-     * @param {RegCompleteRequestBody} body - The request body containing the registration completion details.
-     * @returns {Promise<PasskeyResult>} - A promise resolving to the registration completion result.
-     */
-    async passkeyRegComplete(body: any): Promise<PasskeyResult> {
-        return this.execute(async() => {
-            return await this.post<PasskeyResult>(`/fido2/v2/reg/complete`, body);
-        });
-    }
-
-    /**
      * Exchanges a Cognito token for a LoginID token.
      *
      * This method sends a POST request to the LoginID API to exchange the provided Cognito token
@@ -85,6 +82,92 @@ class LoginIDService extends HTTP {
     async exchangeCognitoToken(token: string): Promise<CognitoWebhookResponse> {
         return this.execute(async() => {
             return await this.post<CognitoWebhookResponse>(`/webhook/cognito/passkeyAuthorize`, {token});
+        });
+    }
+
+
+    /**
+     * Initiates the passkey registration process.
+     *
+     * @returns {Promise<RegInit>} - A promise resolving to the registration initiation response for passkeys.
+     */
+    async passkeyRegInit(request: RegInitRequestBody, token: string): Promise<RegInit> {
+        return this.execute(async () => {
+            return await this.post<RegInit>("/fido2/v2/reg/init", request, this.setBearerToken(token));
+        });
+    }
+
+    /**
+     * Completes the passkey registration process.
+     *
+     * @param {RegCompleteRequestBody} body - The request body containing the registration completion details.
+     * @returns {Promise<PasskeyResult>} - A promise resolving to the registration completion result.
+     */
+    async passkeyRegComplete(body: RegCompleteRequestBody): Promise<PasskeyResult> {
+        return this.execute(async () => {
+            return await this.post<PasskeyResult>(`/fido2/v2/reg/complete`, body);
+        });
+    }
+
+    /**
+     * Initiates the passkey authentication process.
+     *
+     * @returns {Promise<AuthInit>} - A promise resolving to the authentication initiation response for passkeys.
+     */
+    async passkeyAuthInit(request: AuthInitRequestBody): Promise<AuthInit> {
+        return this.execute(async () => {
+            return await this.post<AuthInit>("/fido2/v2/auth/init", request);
+        });
+    }
+
+    /**
+     * Completes the passkey authentication process.
+     *
+     * @param {AuthCompleteRequestBody} body - The request body containing the authentication completion details.
+     * @returns {Promise<PasskeyResult>} - A promise resolving to the authentication completion result.
+     */
+    async passkeyAuthComplete(body: AuthCompleteRequestBody): Promise<PasskeyResult> {
+        return this.execute(async () => {
+            return await this.post<PasskeyResult>(`/fido2/v2/auth/complete`, body);
+        });
+    }
+
+    /**
+     * Lists all passkeys for the authenticated user.
+     *
+     * @param {string} token - The bearer token for authentication. The token is the Cognito ID token.
+     * @returns {Promise<PasskeyCollection>} - A promise resolving to a collection of passkeys.
+     */
+    async listPasskeys(token: string): Promise<PasskeyCollection> {
+        return this.execute(async() => {
+            return await this.get<PasskeyCollection>("/fido2/v2/passkeys", this.setBearerToken(token));
+        });
+    }
+
+    /**
+     * Renames a specific passkey.
+     *
+     * @param {string} token - The bearer token for authentication.
+     * @param {string} passkeyId - The unique identifier of the passkey.
+     * @param {string} name - The new name for the passkey.
+     * @returns {Promise<null>} - A promise resolving to null upon successful renaming.
+     */
+    async renamePasskey(token: string, passkeyId: string, name: string): Promise<null> {
+        return this.execute(async() => {
+            return await this.put<null>(`/fido2/v2/passkeys/${passkeyId}`, {name}, this.setBearerToken(token));
+        });
+    }
+
+    /**
+     * Deletes a specific passkey.
+     *
+     * @param {string} token - The bearer token for authentication.
+     * @param {string} passkeyId - The unique identifier of the passkey.
+     * @returns {Promise<null>} - A promise resolving to null upon successful deletion.
+     */
+    async deletePasskey(token: string, passkeyId: string): Promise<null> {
+        return this.execute(async() => {
+            return await this.delete<null>(`/fido2/v2/passkeys/${passkeyId}`, this.setBearerToken(token));
         });
     }
 }
