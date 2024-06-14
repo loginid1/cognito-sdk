@@ -1,4 +1,4 @@
-import {DeviceInfo} from "./types";
+import {DeviceInfo} from './types'
 
 /**
  * Retrieves default device information based on the user agent for LoginID service (gen3).

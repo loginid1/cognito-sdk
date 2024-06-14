@@ -1,6 +1,6 @@
-import {DeviceInfo} from "../utils/types";
+import {DeviceInfo} from '../utils/types'
 
-export type UsernameType = "email" | "phone";
+export type UsernameType = 'email' | 'phone';
 
 export interface CustomAuthenticationOptions {
 	metaData?: object;
