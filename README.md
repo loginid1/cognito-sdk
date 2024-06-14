@@ -21,12 +21,13 @@ npm install @loginid/cognito-web-sdk
 - visit our [guide](https://docs.loginid.io/Guides/Cognito) for the AWS setup.
 - visit our [API Reference documentation](https://docs.loginid.io/Client-SDKs/cognito-web-sdk) for package implementation.
 
-## License
-
-This project is under Apache 2.0. See [LICENSE.md](./LICENSE.md)
-
 ## Contact and Support
 
 - **Email**: [support@loginid.io](mailto:support@loginid.io)
 - **Community Chat**: [Join our Slack](https://loginidiocommunity.slack.com)
 - **Documentation**: [Read our full documentation](https://docs.loginid.io)
+
+
+## License
+
+This project is under Apache 2.0. See [LICENSE.md](./LICENSE.md)
