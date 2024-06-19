@@ -106,8 +106,12 @@ class LoginIDCognitoWebSDK {
     username: string,
     options?: CustomAuthenticationOptions
   ): Promise<CognitoUserSession> {
-    const { jwtAccess } = await this.lid.authenticateWithPasskey(username, options)
-    return await this.signInWithAccessToken(jwtAccess, options)
+    return this.cognito.customAuthenticationPasskey(
+      username,
+      '',
+      CustomAuthentication.FIDO2_GET,
+      options || {}
+    )
   }
 
   /**
