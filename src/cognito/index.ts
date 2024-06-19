@@ -151,9 +151,12 @@ class Cognito {
 
           const publicKey = JSON.parse(challengParams.public_key)
           const result = await lid.getNavigatorCredential(publicKey)
+          const {jwtAccess} = await lidService.passkeyAuthComplete(result)
+
+          lid.setJwtCookie(jwtAccess)
 
           user.sendCustomChallengeAnswer(
-            JSON.stringify({...result}),
+            jwtAccess,
             this,
             clientMetadata
           )

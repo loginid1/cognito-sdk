@@ -63,10 +63,14 @@ deploy_npm:
     - apt-get update -y
     - apt-get install -y jq
     - echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" > ~/.npmrc
-    - export LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-    - jq --arg version "$LATEST_TAG" '.version = $version' package.json > tmp.json && mv tmp.json package.json
+    - jq --arg version "$CI_COMMIT_TAG" '.version = $version' package.json > tmp.json && mv tmp.json package.json
     - npm config set //registry.npmjs.org/:_authToken ${NPM_AUTH_TOKEN}
-    - npm publish --verbose
+    - >
+      if [[ "$CI_COMMIT_TAG" == *"alpha"* ]]; then
+        npm publish --tag alpha --verbose
+      else
+        npm publish --verbose
+      fi
   rules:
   - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "merge_request_event"
     when: never
