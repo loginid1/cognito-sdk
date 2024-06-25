@@ -145,7 +145,7 @@ class Cognito {
 
 			// Callback object for FIDO2_GET operation
 			const callbackGetObj: IAuthenticationCallback = {
-				customChallenge: async function (_challengParams: any) {
+				customChallenge: async function () {
 					const clientMetadata = {
 						...metaData,
 						options: JSON.stringify(fullOptions),

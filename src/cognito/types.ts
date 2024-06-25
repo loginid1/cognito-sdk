@@ -1,6 +1,6 @@
-import {DeviceInfo} from "../utils/types";
+import { DeviceInfo } from '../utils/types'
 
-export type UsernameType = "email" | "phone";
+export type UsernameType = 'email' | 'phone';
 
 export const DEFAULT_MATCH_THRESHOLD = 80;
 
@@ -13,7 +13,7 @@ export interface CustomAuthenticationOptions {
 	fallback?: ISignInFallbackCallback;
 }
 
-export interface InnerOptions extends CustomAuthenticationOptions{
+export interface InnerOptions extends CustomAuthenticationOptions {
 	idToken?: string;
 	deviceInfo?: DeviceInfo;
 	userAgent?: string;
@@ -24,5 +24,5 @@ export interface InnerOptions extends CustomAuthenticationOptions{
 }
 
 export interface ISignInFallbackCallback {
-	onFallback: (username: string, options: string[])=> void;
+	onFallback: (username: string, options: string[]) => void;
 }

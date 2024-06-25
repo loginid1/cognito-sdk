@@ -140,7 +140,7 @@ class LoginIDCognitoWebSDK {
 	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
 	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
 	 */
-	
+
 	public async signInWithConditionalUI(
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
@@ -172,12 +172,12 @@ class LoginIDCognitoWebSDK {
 				abortSignal: options?.abortController?.signal,
 				autoFill: true,
 			}
-			
+
 			const { jwtAccess, deviceID } = await this.lid.authenticateWithPasskey("", lidOptions);
-			if(deviceID){
+			if (deviceID) {
 				// parse username from jwt
 				const ljwt = parseJwt(jwtAccess);
-				this.loginIDService.saveTrustedDevice(ljwt.username,deviceID);
+				this.loginIDService.saveTrustedDevice(ljwt.username, deviceID);
 			}
 			return await this.signInWithAccessToken(jwtAccess, options);
 		} else {
@@ -305,8 +305,8 @@ class LoginIDCognitoWebSDK {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
 		if (token) {
-		await this.refreshLoginIDToken(token);
-		return await this.lid.deletePasskey(passkeyId);
+			await this.refreshLoginIDToken(token);
+			return await this.lid.deletePasskey(passkeyId);
 		} else {
 			return Promise.reject(new LoginidAPIError("not authorized"));
 		}
@@ -323,7 +323,7 @@ class LoginIDCognitoWebSDK {
 	 * 
 	 * @returns current username
 	 */
-	public getCurrentUsername() : string | null {
+	public getCurrentUsername(): string | null {
 		return this.cognito.currentUsername();
 	}
 }
