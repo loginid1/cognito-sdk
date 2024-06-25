@@ -1,4 +1,4 @@
-import LoginID, { PasskeyCollection } from "@loginid/websdk3";
+import LoginID, { AuthenticateWithPasskeysOptions, PasskeyCollection } from "@loginid/websdk3";
 import LoginIDService from "../services/loginid";
 import { parseJwt } from "../utils/encodes";
 import { CognitoUser, CognitoUserSession } from "amazon-cognito-identity-js";
@@ -7,6 +7,9 @@ import Cognito, {
 	CustomAuthenticationOptions,
 } from "../cognito";
 import { getRandomString } from "../utils/random";
+import { LoginidAPIError } from "../errors";
+
+
 
 /**
  * LoginIDCognitoWebSDK class provides methods for adding and signing in with a passkey using FIDO2 operations.
@@ -48,6 +51,12 @@ class LoginIDCognitoWebSDK {
 		}
 	}
 
+	/**
+	 * Signup with an account without password [randomly generated in background]
+	 * 
+	 * @param email 
+	 * @returns 
+	 */
 	public async signUpPasswordless(email: string): Promise<CognitoUser> {
 		const password = "LID!" + getRandomString(30);
 		return await this.cognito.signUp(email, password);
@@ -78,7 +87,7 @@ class LoginIDCognitoWebSDK {
 				options || {}
 			);
 		} else {
-			return Promise.reject("not authorized")
+			return Promise.reject(new LoginidAPIError("not authorized"))
 		}
 	}
 
@@ -91,10 +100,10 @@ class LoginIDCognitoWebSDK {
 	 */
 	public async signInPasskey(
 		username: string,
-		options?: CustomAuthenticationOptions
+		options?: CustomAuthenticationOptions,
 	): Promise<CognitoUserSession> {
-		const { jwtAccess } = await this.lid.authenticateWithPasskey(username, options)
-		return await this.signInWithAccessToken(jwtAccess, options);
+		//const { jwtAccess } = await this.lid.authenticateWithPasskey(username, options)
+		return await this.cognito.customAuthenticationPasskey(username, "", CustomAuthentication.FIDO2_GET, options || {})
 	}
 
 	/**
@@ -108,7 +117,7 @@ class LoginIDCognitoWebSDK {
 	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
 	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
 	 */
-	public async signInWithAccessToken(
+	private async signInWithAccessToken(
 		accessJwt: string,
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
@@ -131,6 +140,7 @@ class LoginIDCognitoWebSDK {
 	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
 	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
 	 */
+	
 	public async signInWithConditionalUI(
 		options?: CustomAuthenticationOptions
 	): Promise<CognitoUserSession> {
@@ -158,14 +168,20 @@ class LoginIDCognitoWebSDK {
 	): Promise<CognitoUserSession> {
 		const isAvailable = await window.PublicKeyCredential?.isConditionalMediationAvailable();
 		if (isAvailable) {
-			const lidOptions = {
-				...options,
+			const lidOptions = <AuthenticateWithPasskeysOptions>{
+				abortSignal: options?.abortController?.signal,
 				autoFill: true,
 			}
-			const { jwtAccess } = await this.lid.authenticateWithPasskey("", lidOptions);
+			
+			const { jwtAccess, deviceID } = await this.lid.authenticateWithPasskey("", lidOptions);
+			if(deviceID){
+				// parse username from jwt
+				const ljwt = parseJwt(jwtAccess);
+				this.loginIDService.saveTrustedDevice(ljwt.username,deviceID);
+			}
 			return await this.signInWithAccessToken(jwtAccess, options);
 		} else {
-			return Promise.reject("not available");
+			return Promise.reject(new LoginidAPIError("not available"));
 		}
 	}
 
@@ -233,10 +249,12 @@ class LoginIDCognitoWebSDK {
 			token = this.cognito.getCurrentCognitoIdToken();
 		}
 		if (token) {
-			await this.refreshLoginIDToken(token);
-			return await this.lid.listPasskeys()
+			//await this.refreshLoginIDToken(token);
+			const lidToken = await this.loginIDService.exchangeCognitoToken(token);
+			return await this.loginIDService.listPasskeys(lidToken.token);
+			//return await this.lid.listPasskeys()
 		} else {
-			return Promise.reject("not authorized");
+			return Promise.reject(new LoginidAPIError("not authorized"));
 		}
 	}
 
@@ -264,7 +282,7 @@ class LoginIDCognitoWebSDK {
 			await this.refreshLoginIDToken(token);
 			return await this.lid.renamePasskey(passkeyId, name);
 		} else {
-			return Promise.reject("not authorized");
+			return Promise.reject(new LoginidAPIError("not authorized"));
 		}
 	}
 
@@ -290,7 +308,7 @@ class LoginIDCognitoWebSDK {
 		await this.refreshLoginIDToken(token);
 		return await this.lid.deletePasskey(passkeyId);
 		} else {
-			return Promise.reject("not authorized");
+			return Promise.reject(new LoginidAPIError("not authorized"));
 		}
 	}
 

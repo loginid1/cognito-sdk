@@ -1,6 +1,6 @@
 import HTTP from "./http";
-import {PasskeyAPIError} from "../errors";
-import { AuthCompleteRequestBody, AuthInit, AuthInitRequestBody, PasskeyCollection, PasskeyResult, RegCompleteRequestBody, RegInit, RegInitRequestBody } from "@loginid/websdk3";
+import { LoginidAPIError } from "../errors";
+import { AuthCompleteRequestBody, AuthInit, AuthInitRequestBody, DeviceInfo, PasskeyCollection, PasskeyResult, RegCompleteRequestBody, RegInit, RegInitRequestBody } from "@loginid/websdk3";
 import { CognitoWebhookResponse } from "./models/loginid";
 /**
  * API class for handling LoginID FIDO2 service.
@@ -57,7 +57,7 @@ class LoginIDService extends HTTP {
      *
      * @param {() => Promise<T>} callback - The API call to be executed.
      * @returns {Promise<T>} - A promise resolving to the result of the API call.
-     * @throws {PasskeyAPIError} - Throws an error if the API call fails.
+     * @throws {LoginidAPIError} - Throws an error if the API call fails.
      */
     private async execute<T>(callback: () => Promise<T>) {
         if (!this.getBaseUrl()) {
@@ -66,7 +66,7 @@ class LoginIDService extends HTTP {
         try {
             return await callback();
         } catch (error) {
-            throw PasskeyAPIError.fromPayload(error);
+            throw LoginidAPIError.fromPayload(error);
         }
     }
 
@@ -80,8 +80,8 @@ class LoginIDService extends HTTP {
      * @returns {Promise<CognitoWebhookResponse>} - A promise resolving to the `CognitoWebhookResponse` containing the LoginID token.
      */
     async exchangeCognitoToken(token: string): Promise<CognitoWebhookResponse> {
-        return this.execute(async() => {
-            return await this.post<CognitoWebhookResponse>(`/webhook/cognito/passkeyAuthorize`, {token});
+        return this.execute(async () => {
+            return await this.post<CognitoWebhookResponse>(`/webhook/cognito/passkeyAuthorize`, { token });
         });
     }
 
@@ -139,7 +139,7 @@ class LoginIDService extends HTTP {
      * @returns {Promise<PasskeyCollection>} - A promise resolving to a collection of passkeys.
      */
     async listPasskeys(token: string): Promise<PasskeyCollection> {
-        return this.execute(async() => {
+        return this.execute(async () => {
             return await this.get<PasskeyCollection>("/fido2/v2/passkeys", this.setBearerToken(token));
         });
     }
@@ -153,8 +153,8 @@ class LoginIDService extends HTTP {
      * @returns {Promise<null>} - A promise resolving to null upon successful renaming.
      */
     async renamePasskey(token: string, passkeyId: string, name: string): Promise<null> {
-        return this.execute(async() => {
-            return await this.put<null>(`/fido2/v2/passkeys/${passkeyId}`, {name}, this.setBearerToken(token));
+        return this.execute(async () => {
+            return await this.put<null>(`/fido2/v2/passkeys/${passkeyId}`, { name }, this.setBearerToken(token));
         });
     }
 
@@ -166,10 +166,41 @@ class LoginIDService extends HTTP {
      * @returns {Promise<null>} - A promise resolving to null upon successful deletion.
      */
     async deletePasskey(token: string, passkeyId: string): Promise<null> {
-        return this.execute(async() => {
+        return this.execute(async () => {
             return await this.delete<null>(`/fido2/v2/passkeys/${passkeyId}`, this.setBearerToken(token));
         });
     }
+
+
+	public getDeviceInfo(username: string): DeviceInfo {
+		const device: DeviceInfo = {
+			clientType: 'browser',
+			screenWidth: window.screen.width,
+			screenHeight: window.screen.height,
+		}
+
+		const deviceId = this.getTrustedDevice(username);
+		if(deviceId) {
+			device.deviceId = deviceId;
+        }
+
+
+		return device
+	}
+
+	public saveTrustedDevice(username: string, deviceID?: string) {
+
+		const key = "trusted-device." + username.toLowerCase();
+		// store trusted deviceID
+		if (deviceID) {
+			localStorage.setItem(key, deviceID);
+		}
+
+	}
+	public getTrustedDevice(username: string): string | null {
+		const key = "trusted-device." + username.toLowerCase();
+		return localStorage.getItem(key)
+	}
 }
 
 export default LoginIDService;
