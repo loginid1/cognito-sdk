@@ -1,7 +1,7 @@
-import LoginIDSDK from '@loginid/websdk3'
+import LoginIDSDK, { AuthInitRequestBody } from '@loginid/websdk3'
 import LoginIDService from '../services/loginid'
-import {defaultDeviceInfo, getUserAgent} from '../utils/browser'
-import {CustomAuthenticationOptions, InnerOptions} from './types'
+import { defaultDeviceInfo, getUserAgent } from '../utils/browser'
+import { CustomAuthenticationOptions, DEFAULT_MATCH_THRESHOLD, InnerOptions } from './types'
 import {
   AuthenticationDetails,
   CognitoUser,
@@ -12,6 +12,7 @@ import {
   IAuthenticationDetailsData,
   ICognitoUserData,
 } from 'amazon-cognito-identity-js'
+import { LoginidAPIError } from '../errors'
 
 /**
  * Enumeration representing different types of custom authentication operations.
@@ -68,12 +69,13 @@ class Cognito {
       const lid = this.lid
       const lidService = this.lidService
 
+      const lowerUsername = username.toLowerCase()
       const authenticationData: IAuthenticationDetailsData = {
-        Username: username,
+        Username: lowerUsername,
         Password: '',
       }
       const userData: ICognitoUserData = {
-        Username: username,
+        Username: lowerUsername,
         Pool: this.userPool,
       }
 
@@ -86,8 +88,8 @@ class Cognito {
         deviceInfo: defaultDeviceInfo(),
         userAgent: getUserAgent(),
         user: {
-          ...options.displayName && {displayName: options.displayName},
-          ...options.usernameType && {usernameType: options.usernameType},
+          ...options.displayName && { displayName: options.displayName },
+          ...options.usernameType && { usernameType: options.usernameType },
         }
       }
 
@@ -110,8 +112,17 @@ class Cognito {
           }
 
           const init = JSON.parse(challengParams.public_key)
+          if (options.abortController && !options.abortController.signal.aborted) {
+            // abort current controller to allow new passkey creation
+            options.abortController.abort()
+            console.log('abort webauthn create')
+          }
           const publicKey = await lid.createNavigatorCredential(init)
-          const {jwtAccess} = await lidService.passkeyRegComplete(publicKey)
+          const { jwtAccess, deviceID } = await lidService.passkeyRegComplete(publicKey)
+          // store trusted deviceID
+          if (deviceID) {
+            lidService.saveTrustedDevice(username, deviceID)
+          }
 
           lid.setJwtCookie(jwtAccess)
 
@@ -131,35 +142,72 @@ class Cognito {
         },
       }
 
+
       // Callback object for FIDO2_GET operation
       const callbackGetObj: IAuthenticationCallback = {
-        customChallenge: async function (challengParams: any) {
+        customChallenge: async function () {
           const clientMetadata = {
             ...metaData,
             options: JSON.stringify(fullOptions),
             authentication_type: CustomAuthentication.FIDO2_GET,
           }
 
-          if (challengParams?.challenge === CustomAuthentication.AUTH_PARAMS) {
-            user.sendCustomChallengeAnswer(
-              CustomAuthentication.AUTH_PARAMS,
-              this,
-              clientMetadata
-            )
-            return
+
+          const auth_init_request = <AuthInitRequestBody>{
+            app: { id: lidService.getAppId() },
+            user: { username: username, usernameType: 'email' },
+            deviceInfo: lidService.getDeviceInfo(username),
           }
 
-          const publicKey = JSON.parse(challengParams.public_key)
-          const result = await lid.getNavigatorCredential(publicKey)
-          const {jwtAccess} = await lidService.passkeyAuthComplete(result)
+          let auth_init_result
+          try {
 
-          lid.setJwtCookie(jwtAccess)
+            auth_init_result = await lidService.passkeyAuthInit(auth_init_request)
 
-          user.sendCustomChallengeAnswer(
-            jwtAccess,
-            this,
-            clientMetadata
-          )
+
+            const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
+            //if ((auth_init_result.matchScore && auth_init_result.matchScore < match_threshold)) {
+            if (!auth_init_result || (auth_init_result.matchScore && auth_init_result.matchScore < match_threshold)) {
+              // fallback here?
+              if (options.fallback) {
+                options.fallback.onFallback(username, auth_init_result.fallbackOptions || [])
+              } else {
+                reject(new LoginidAPIError('no passkey detected', 'ERROR_FALLBACK'))
+              }
+
+            } else {
+              if (options.abortController && !options.abortController.signal.aborted) {
+                // abort current controller to allow new passkey creation
+                options.abortController.abort()
+                console.log('abort webauthn get')
+              }
+
+              const webauthn_result = await lid.getNavigatorCredential(auth_init_result)
+              const jwt = await lidService.passkeyAuthComplete(webauthn_result)
+
+              user.sendCustomChallengeAnswer(
+                //JSON.stringify({ ...result }),
+                jwt.jwtAccess,
+                this,
+                clientMetadata
+              )
+
+            }
+          } catch (e) {
+            if (e instanceof LoginidAPIError) {
+              if (e.msgCode === 'not_found') {
+                if (options.fallback) {
+                  options.fallback.onFallback(username, [])
+                } else {
+                  reject(new LoginidAPIError('no passkey detected', 'ERROR_FALLBACK'))
+                }
+
+              }
+            }
+
+          }
+
+
         },
 
         onSuccess: function (session: CognitoUserSession) {
@@ -179,16 +227,18 @@ class Cognito {
             options: JSON.stringify(fullOptions),
             authentication_type: CustomAuthentication.ACCESS_JWT,
           }
-
           if (challengParams?.challenge === CustomAuthentication.AUTH_PARAMS) {
-            user.sendCustomChallengeAnswer(
-              CustomAuthentication.AUTH_PARAMS,
-              this,
-              clientMetadata
-            )
-            return
+            /*
+							user.sendCustomChallengeAnswer(
+								CustomAuthentication.AUTH_PARAMS,
+								this,
+								clientMetadata
+							);
+							return;
+						*/
+            // skip this
+            console.log('auth params')
           }
-
           user.sendCustomChallengeAnswer(
             token,
             this,
@@ -242,12 +292,13 @@ class Cognito {
     options: CustomAuthenticationOptions,
   ): Promise<CognitoUser> {
     return new Promise((resolve, reject) => {
+      const lowerUsername = username.toLowerCase()
       const authenticationData: IAuthenticationDetailsData = {
-        Username: username,
+        Username: lowerUsername,
         Password: '',
       }
       const userData: ICognitoUserData = {
-        Username: username,
+        Username: lowerUsername,
         Pool: this.userPool,
       }
 
@@ -346,9 +397,9 @@ class Cognito {
     })
   }
 
-  public async signUp(email:string, password:string): Promise<CognitoUser> {
+  public async signUp(email: string, password: string): Promise<CognitoUser> {
 
-    return new Promise((resolve,reject) => {
+    return new Promise((resolve, reject) => {
 
       const lowerEmail = email.toLowerCase()
       const attributeList = []
@@ -356,11 +407,11 @@ class Cognito {
         Name: 'email',
         Value: lowerEmail,
       }
-			
+
       const attributeEmail = new CognitoUserAttribute(dataEmail)
-			
+
       attributeList.push(attributeEmail)
-			
+
       this.userPool.signUp(
         lowerEmail,
         password,
@@ -368,13 +419,13 @@ class Cognito {
         [],
         function (err, result) {
           if (err) {
-            reject(err.message)
+            reject(new Error(err.message))
             return
           }
-          if(result!=null){
+          if (result != null) {
             resolve(result.user)
           } else {
-            reject('error empty result')
+            reject(new Error('error empty result'))
           }
 
         }
@@ -382,14 +433,14 @@ class Cognito {
     })
   }
 
-  public signOut(){
+  public signOut() {
     const user = this.userPool.getCurrentUser()
-    if (user!=null) {
+    if (user != null) {
       user.signOut()
     }
   }
 
-  public currentUsername() : string | null {
+  public currentUsername(): string | null {
     const user = this.userPool.getCurrentUser()
     if (user) {
       return user.getUsername()
