@@ -2,7 +2,7 @@ import { DeviceInfo } from '../utils/types'
 
 export type UsernameType = 'email' | 'phone';
 
-export const DEFAULT_MATCH_THRESHOLD = 80;
+export const DEFAULT_MATCH_THRESHOLD = 80
 
 export interface CustomAuthenticationOptions {
 	metaData?: object;
