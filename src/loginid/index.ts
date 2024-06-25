@@ -33,23 +33,6 @@ class LoginIDCognitoWebSDK {
     this.cognito = new Cognito(this.loginIDService, this.lid, userPoolId, clientId)
   }
 
-  /**
-	 * Refreshes the LoginID token if the user is not logged in.
-	 *
-	 * This method checks if the user is logged in via the LoginID webhook service. If the user is not logged in,
-	 * it exchanges the provided Cognito ID token for a LoginID token and sets it as a cookie.
-	 *
-	 * @param {string} idToken - The Cognito ID token of the user.
-	 * @returns {Promise<void>} - A promise resolving to void upon successful token refresh.
-	 */
-  private async refreshLoginIDToken(
-    idToken: string
-  ) {
-    if (!this.lid.isLoggedIn()) {
-      const { token } = await this.loginIDService.exchangeCognitoToken(idToken)
-      this.lid.setJwtCookie(token)
-    }
-  }
 
   /**
 	 * Signup with an account without password [randomly generated in background]
@@ -60,6 +43,27 @@ class LoginIDCognitoWebSDK {
   public async signUpPasswordless(email: string): Promise<CognitoUser> {
     const password = 'LID!' + getRandomString(30)
     return await this.cognito.signUp(email, password)
+  }
+
+  private async getLoginIDToken(
+    idToken: string | null
+  ): Promise<string> {
+    // Cognito ID token is used to exchange for LoginID token
+    if (!idToken) {
+      idToken = this.cognito.getCurrentCognitoIdToken()
+    }
+
+    if (!idToken) {
+      return Promise.reject('not authorized')
+    }
+
+    // Check if LoginID token is available in cookies
+    const jwtAccess = this.lid.getJwtCookie()
+    if (jwtAccess) {
+      return jwtAccess
+    } 
+    const { token } = await this.loginIDService.exchangeCognitoToken(idToken)
+    return token
   }
 
   /**
@@ -102,7 +106,6 @@ class LoginIDCognitoWebSDK {
     username: string,
     options?: CustomAuthenticationOptions,
   ): Promise<CognitoUserSession> {
-    //const { jwtAccess } = await this.lid.authenticateWithPasskey(username, options)
     return await this.cognito.customAuthenticationPasskey(username, '', CustomAuthentication.FIDO2_GET, options || {})
   }
 
@@ -140,7 +143,6 @@ class LoginIDCognitoWebSDK {
 	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
 	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
 	 */
-
   public async signInWithConditionalUI(
     options?: CustomAuthenticationOptions
   ): Promise<CognitoUserSession> {
@@ -244,18 +246,8 @@ class LoginIDCognitoWebSDK {
   public async listPasskeys(
     idToken?: string
   ): Promise<PasskeyCollection> {
-    let token = idToken || null
-    if (!token) {
-      token = this.cognito.getCurrentCognitoIdToken()
-    }
-    if (token) {
-      //await this.refreshLoginIDToken(token);
-      const lidToken = await this.loginIDService.exchangeCognitoToken(token)
-      return await this.loginIDService.listPasskeys(lidToken.token)
-      //return await this.lid.listPasskeys()
-    } else {
-      return Promise.reject(new LoginidAPIError('not authorized'))
-    }
+    const lidToken = await this.getLoginIDToken(idToken || null)
+    return await this.lid.listPasskeys({token: lidToken})
   }
 
   /**
@@ -274,16 +266,8 @@ class LoginIDCognitoWebSDK {
     name: string,
     idToken?: string,
   ): Promise<null> {
-    let token = idToken || null
-    if (!token) {
-      token = this.cognito.getCurrentCognitoIdToken()
-    }
-    if (token) {
-      await this.refreshLoginIDToken(token)
-      return await this.lid.renamePasskey(passkeyId, name)
-    } else {
-      return Promise.reject(new LoginidAPIError('not authorized'))
-    }
+    const lidToken = await this.getLoginIDToken(idToken || null)
+    return await this.lid.renamePasskey(passkeyId, name, {token: lidToken})
   }
 
   /**
@@ -300,16 +284,8 @@ class LoginIDCognitoWebSDK {
     passkeyId: string,
     idToken?: string,
   ): Promise<null> {
-    let token = idToken || null
-    if (!token) {
-      token = this.cognito.getCurrentCognitoIdToken()
-    }
-    if (token) {
-      await this.refreshLoginIDToken(token)
-      return await this.lid.deletePasskey(passkeyId)
-    } else {
-      return Promise.reject(new LoginidAPIError('not authorized'))
-    }
+    const lidToken = await this.getLoginIDToken(idToken || null)
+    return await this.lid.deletePasskey(passkeyId, {token: lidToken})
   }
 
   /**

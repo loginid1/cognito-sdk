@@ -278,7 +278,6 @@ class Cognito {
     })
   }
 
-
   /**
 	 * Initiates custom authentication for the specified username.
 	 *
@@ -449,20 +448,18 @@ class Cognito {
     return null
   }
 
-  public getCurrentCognitoIdToken(): string | null {
+  public getCurrentCognitoIdToken() : string | null {
 
     const user = this.userPool.getCurrentUser()
-    if (user && window) {
-      const key = 'CognitoIdentityServiceProvider.' + this.userPool.getClientId() + '.' + user.getUsername() + '.idToken'
+    if(user && window){
+      const key = 'CognitoIdentityServiceProvider.'+this.userPool.getClientId()+ '.' + user.getUsername() + '.idToken'
       const token = localStorage.getItem(key)
       return token
     }
     return null
   }
-
-
 }
 
-export type { CustomAuthenticationOptions }
+export type {CustomAuthenticationOptions}
 
 export default Cognito

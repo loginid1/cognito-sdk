@@ -139,7 +139,7 @@ class LoginIDService extends HTTP {
      * @returns {Promise<PasskeyCollection>} - A promise resolving to a collection of passkeys.
      */
   async listPasskeys(token: string): Promise<PasskeyCollection> {
-    return this.execute(async () => {
+    return this.execute(async() => {
       return await this.get<PasskeyCollection>('/fido2/v2/passkeys', this.setBearerToken(token))
     })
   }
@@ -153,8 +153,8 @@ class LoginIDService extends HTTP {
      * @returns {Promise<null>} - A promise resolving to null upon successful renaming.
      */
   async renamePasskey(token: string, passkeyId: string, name: string): Promise<null> {
-    return this.execute(async () => {
-      return await this.put<null>(`/fido2/v2/passkeys/${passkeyId}`, { name }, this.setBearerToken(token))
+    return this.execute(async() => {
+      return await this.put<null>(`/fido2/v2/passkeys/${passkeyId}`, {name}, this.setBearerToken(token))
     })
   }
 
