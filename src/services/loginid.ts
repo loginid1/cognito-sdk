@@ -49,7 +49,7 @@ class LoginIDService extends HTTP {
      * @throws {Error} - Throws an error if the base URL does not match the expected pattern.
      */
   public getAppId(): string {
-    const pattern = /https:\/\/([0-9a-fA-F-]+)\.api\..*\.loginid\.io/
+    const pattern = /https:\/\/([0-9a-fA-F-]+)\.api\.(.*\.)?loginid\.io/
     const match = this.getBaseUrl().match(pattern)
     if (match) {
       return match[1]
