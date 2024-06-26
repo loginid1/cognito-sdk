@@ -176,11 +176,13 @@ class LoginIDCognitoWebSDK {
       }
 
       const { jwtAccess, deviceID } = await this.lid.authenticateWithPasskey('', lidOptions)
+      const ljwt = parseJwt(jwtAccess)
+      this.loginIDService.saveHasAutofill(ljwt.username)
       if (deviceID) {
         // parse username from jwt
-        const ljwt = parseJwt(jwtAccess)
         this.loginIDService.saveTrustedDevice(ljwt.username, deviceID)
       }
+
       return await this.signInWithAccessToken(jwtAccess, options)
     } else {
       return Promise.reject(new LoginidAPIError('not available'))
