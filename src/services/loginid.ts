@@ -206,7 +206,7 @@ class LoginIDService extends HTTP {
 
     const key = 'autofill-passkey.' + username.toLowerCase()
     // store autofill
-    localStorage.setItem(key, "true")
+    localStorage.setItem(key, 'true')
 
   }
   public getHasAutofill(username: string): boolean {

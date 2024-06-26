@@ -162,9 +162,9 @@ class Cognito {
           try {
 
             const auth_init_result = await lidService.passkeyAuthInit(auth_init_request)
-            const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD;
-            const match = auth_init_result.matchScore || 0;
-            const hasAutofill = lidService.getHasAutofill(username);
+            const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
+            const match = auth_init_result.matchScore || 0
+            const hasAutofill = lidService.getHasAutofill(username)
             
             if (!hasAutofill && match < match_threshold) {
               // fallback here?
