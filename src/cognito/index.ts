@@ -159,15 +159,14 @@ class Cognito {
             deviceInfo: lidService.getDeviceInfo(username),
           }
 
-          let auth_init_result
           try {
 
-            auth_init_result = await lidService.passkeyAuthInit(auth_init_request)
-
-
+            const auth_init_result = await lidService.passkeyAuthInit(auth_init_request)
             const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
-            //if ((auth_init_result.matchScore && auth_init_result.matchScore < match_threshold)) {
-            if (!auth_init_result || (auth_init_result.matchScore && auth_init_result.matchScore < match_threshold)) {
+            const match = auth_init_result.matchScore || 0
+            const hasAutofill = lidService.getHasAutofill(username)
+            
+            if (!hasAutofill && match < match_threshold) {
               // fallback here?
               if (options.fallback) {
                 options.fallback.onFallback(username, auth_init_result.fallbackOptions || [])
@@ -221,23 +220,11 @@ class Cognito {
 
       // Callback object for ACCESS_JWT operation
       const callbackJWTObj: IAuthenticationCallback = {
-        customChallenge: function (challengParams: any) {
+        customChallenge: function () {
           const clientMetadata = {
             ...metaData,
             options: JSON.stringify(fullOptions),
             authentication_type: CustomAuthentication.ACCESS_JWT,
-          }
-          if (challengParams?.challenge === CustomAuthentication.AUTH_PARAMS) {
-            /*
-							user.sendCustomChallengeAnswer(
-								CustomAuthentication.AUTH_PARAMS,
-								this,
-								clientMetadata
-							);
-							return;
-						*/
-            // skip this
-            console.log('auth params')
           }
           user.sendCustomChallengeAnswer(
             token,
