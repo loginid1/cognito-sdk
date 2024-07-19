@@ -18,11 +18,11 @@ import { LoginidAPIError } from '../errors'
  * Enumeration representing different types of custom authentication operations.
  */
 export enum CustomAuthentication {
-	ACCESS_JWT = 'JWT_ACCESS',
-	EMAIL_OTP = 'EMAIL_OTP',
-	AUTH_PARAMS = 'AUTH_PARAMS',
-	FIDO2_CREATE = 'FIDO2_CREATE',
-	FIDO2_GET = 'FIDO2_GET',
+  ACCESS_JWT = 'JWT_ACCESS',
+  EMAIL_OTP = 'EMAIL_OTP',
+  AUTH_PARAMS = 'AUTH_PARAMS',
+  FIDO2_CREATE = 'FIDO2_CREATE',
+  FIDO2_GET = 'FIDO2_GET',
 }
 
 /**
@@ -34,11 +34,11 @@ class Cognito {
   private lid: LoginIDSDK
 
   /**
-	 * Constructor for the Cognito class.
-	 *
-	 * @param {string} userPoolId - The ID of the Cognito User Pool.
-	 * @param {string} clientId - The client ID associated with the User Pool.
-	 */
+   * Constructor for the Cognito class.
+   *
+   * @param {string} userPoolId - The ID of the Cognito User Pool.
+   * @param {string} clientId - The client ID associated with the User Pool.
+   */
   constructor(service: LoginIDService, lid: LoginIDSDK, userPoolId: string, clientId: string) {
     this.lidService = service
     this.lid = lid
@@ -49,16 +49,16 @@ class Cognito {
   }
 
   /**
-	 * Performs custom authentication using FIDO2 for either create or get operations.
-	 *
-	 * @param {string} username - The username of the Cognito user.
-	 * @param {string} token - The token associated with the user.
-	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @param {object} options.metaData - Additional metadata for the authentication process.
-	 * @param {AttestationOptions} options.attestationOptions - Attestation options for FIDO2 operations.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Performs custom authentication using FIDO2 for either create or get operations.
+   *
+   * @param {string} username - The username of the Cognito user.
+   * @param {string} token - The token associated with the user.
+   * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @param {object} options.metaData - Additional metadata for the authentication process.
+   * @param {AttestationOptions} options.attestationOptions - Attestation options for FIDO2 operations.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   public async customAuthenticationPasskey(
     username: string,
     token: string,
@@ -165,7 +165,7 @@ class Cognito {
             const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
             const match = auth_init_result.matchScore || 0
             const hasAutofill = lidService.getHasAutofill(username)
-            
+
             if (!hasAutofill && match < match_threshold) {
               // fallback here?
               if (options.fallback) {
@@ -244,35 +244,35 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-      case CustomAuthentication.FIDO2_CREATE:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackCreateObj)
-        break
+        case CustomAuthentication.FIDO2_CREATE:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackCreateObj)
+          break
 
-      case CustomAuthentication.FIDO2_GET:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackGetObj)
-        break
+        case CustomAuthentication.FIDO2_GET:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackGetObj)
+          break
 
-      case CustomAuthentication.ACCESS_JWT:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackJWTObj)
-        break
+        case CustomAuthentication.ACCESS_JWT:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackJWTObj)
+          break
 
-      default:
-        throw new Error('Invalid custom authentication type')
+        default:
+          throw new Error('Invalid custom authentication type')
       }
     })
   }
 
   /**
-	 * Initiates custom authentication for the specified username.
-	 *
-	 * @param {string} username - The username of the Cognito user.
-	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
-	 */
+   * Initiates custom authentication for the specified username.
+   *
+   * @param {string} username - The username of the Cognito user.
+   * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
+   */
   public async customAuthenticationInit(
     username: string,
     type: CustomAuthentication,
@@ -328,25 +328,25 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-      case CustomAuthentication.EMAIL_OTP:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackEmailOTP)
-        break
+        case CustomAuthentication.EMAIL_OTP:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackEmailOTP)
+          break
 
-      default:
-        throw new Error('Invalid custom authentication type')
+        default:
+          throw new Error('Invalid custom authentication type')
       }
     })
   }
 
   /**
-	 * Responds to custom authentication challenge for the given username.
-	 *
-	 * @param {string} username - The username of the Cognito user.
-	 * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
-	 */
+   * Responds to custom authentication challenge for the given username.
+   *
+   * @param {string} username - The username of the Cognito user.
+   * @param {CustomAuthentication} type - The type of custom authentication operation (FIDO2_CREATE or FIDO2_GET).
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUser>} - A promise resolving to the Cognito user.
+   */
   public async customAuthenticationComplete(
     user: CognitoUser,
     answer: string,
@@ -384,7 +384,7 @@ class Cognito {
     })
   }
 
-  public async signUp(email: string, password: string): Promise<CognitoUser> {
+  public async signUp(email: string, password: string, autoSignIn: boolean): Promise<CognitoUser> {
 
     return new Promise((resolve, reject) => {
 
@@ -410,14 +410,66 @@ class Cognito {
             return
           }
           if (result != null) {
-            resolve(result.user)
+
+            if (autoSignIn) {
+              const authenticationData = {
+                Username: lowerEmail,
+                Password: password,
+              }
+              const authenticationDetails = new AuthenticationDetails(
+                authenticationData
+              )
+              result.user.authenticateUser(authenticationDetails, {
+                onSuccess: function () {
+                  resolve(result.user)
+                },
+
+                onFailure: function (autoSigninError) {
+                  reject(autoSigninError)
+                },
+              })
+            } else {
+              resolve(result.user)
+
+            }
           } else {
             reject(new Error('error empty result'))
           }
-
         }
       )
+
     })
+  }
+
+  public async signInPassword(email: string, password: string): Promise<CognitoUserSession> {
+
+    return new Promise((resolve, reject) => {
+      const lowerEmail = email.toLowerCase()
+      const authenticationData = {
+        Username: lowerEmail,
+        Password: password,
+      }
+      const authenticationDetails = new AuthenticationDetails(
+        authenticationData
+      )
+
+      const userData: ICognitoUserData = {
+        Username: lowerEmail,
+        Pool: this.userPool,
+      }
+
+      const user = new CognitoUser(userData)
+      user.authenticateUser(authenticationDetails, {
+        onSuccess: function (session: CognitoUserSession) {
+          resolve(session)
+        },
+
+        onFailure: function (autoSigninError) {
+          reject(autoSigninError)
+        },
+      })
+    })
+
   }
 
   public signOut() {
@@ -435,11 +487,11 @@ class Cognito {
     return null
   }
 
-  public getCurrentCognitoIdToken() : string | null {
+  public getCurrentCognitoIdToken(): string | null {
 
     const user = this.userPool.getCurrentUser()
-    if(user && window){
-      const key = 'CognitoIdentityServiceProvider.'+this.userPool.getClientId()+ '.' + user.getUsername() + '.idToken'
+    if (user && window) {
+      const key = 'CognitoIdentityServiceProvider.' + this.userPool.getClientId() + '.' + user.getUsername() + '.idToken'
       const token = localStorage.getItem(key)
       return token
     }
@@ -447,6 +499,6 @@ class Cognito {
   }
 }
 
-export type {CustomAuthenticationOptions}
+export type { CustomAuthenticationOptions }
 
 export default Cognito
