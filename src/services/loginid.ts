@@ -193,6 +193,7 @@ class LoginIDService extends HTTP {
     const key = 'trusted-device.' + username.toLowerCase()
     // store trusted deviceID
     if (deviceID) {
+      localStorage.setItem('has-trusted-device', 'true')
       localStorage.setItem(key, deviceID)
     }
 
@@ -205,6 +206,7 @@ class LoginIDService extends HTTP {
   public saveHasAutofill(username: string) {
 
     const key = 'autofill-passkey.' + username.toLowerCase()
+    localStorage.setItem('has-trusted-device', 'true')
     // store autofill
     localStorage.setItem(key, 'true')
 
@@ -212,6 +214,14 @@ class LoginIDService extends HTTP {
   public getHasAutofill(username: string): boolean {
     const key = 'autofill-passkey.' + username.toLowerCase()
     return localStorage.getItem(key) ? true : false
+  }
+
+  public hasTrustedDevice(): boolean {
+    if (localStorage.getItem('has-trusted-device') != null) {
+      return true
+    } else {
+      return false
+    }
   }
 }
 

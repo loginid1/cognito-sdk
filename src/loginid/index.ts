@@ -1,4 +1,4 @@
-import LoginID, { AuthenticateWithPasskeysOptions, PasskeyCollection } from '@loginid/websdk3'
+import LoginID, { AuthenticateWithPasskeysOptions, PasskeyCollection, TxComplete } from '@loginid/websdk3'
 import LoginIDService from '../services/loginid'
 import { parseJwt } from '../utils/encodes'
 import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js'
@@ -334,6 +334,13 @@ class LoginIDCognitoWebSDK {
   }
 
 
+  public async confirmTransaction(email: string, payload: string): Promise<TxComplete>{
+    return await this.lid.confirmTransaction(email,payload)
+  }
+
+  public hasTrustedDevice(): boolean {
+    return this.loginIDService.hasTrustedDevice()
+  }
 
 }
 
