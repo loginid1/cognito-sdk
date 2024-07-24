@@ -1,4 +1,4 @@
-import LoginID, { AuthenticateWithPasskeysOptions, PasskeyCollection } from '@loginid/websdk3'
+import LoginID, { AuthenticateWithPasskeysOptions, PasskeyCollection, TxComplete } from '@loginid/websdk3'
 import LoginIDService from '../services/loginid'
 import { parseJwt } from '../utils/encodes'
 import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js'
@@ -21,12 +21,12 @@ class LoginIDCognitoWebSDK {
   private currentCognitoUser: CognitoUser | null = null
 
   /**
-	 * Constructor for the LoginIDCognitoWebSDK class.
-	 *
-	 * @param {string} userPoolId - The ID of the Cognito User Pool.
-	 * @param {string} clientId - The client ID associated with the User Pool.
-	 * @param {string} baseUrl - The base URL for the LoginID API.
-	 */
+   * Constructor for the LoginIDCognitoWebSDK class.
+   *
+   * @param {string} userPoolId - The ID of the Cognito User Pool.
+   * @param {string} clientId - The client ID associated with the User Pool.
+   * @param {string} baseUrl - The base URL for the LoginID API.
+   */
   constructor(userPoolId: string, clientId: string, baseUrl: string) {
     this.loginIDService = new LoginIDService(baseUrl)
     this.lid = new LoginID({ baseUrl: baseUrl, appId: this.loginIDService.getAppId() })
@@ -35,14 +35,14 @@ class LoginIDCognitoWebSDK {
 
 
   /**
-	 * Signup with an account without password [randomly generated in background]
-	 * 
-	 * @param email 
-	 * @returns 
-	 */
+   * Signup with an account without password [randomly generated in background]
+   * 
+   * @param email 
+   * @returns 
+   */
   public async signUpPasswordless(email: string): Promise<CognitoUser> {
     const password = 'LID!' + getRandomString(30)
-    return await this.cognito.signUp(email, password)
+    return await this.cognito.signUp(email, password, false)
   }
 
   private async getLoginIDToken(
@@ -54,26 +54,26 @@ class LoginIDCognitoWebSDK {
     }
 
     if (!idToken) {
-      return Promise.reject('not authorized')
+      return Promise.reject(new LoginidAPIError('not authorized'))
     }
 
     // Check if LoginID token is available in cookies
     const jwtAccess = this.lid.getJwtCookie()
     if (jwtAccess) {
       return jwtAccess
-    } 
+    }
     const { token } = await this.loginIDService.exchangeCognitoToken(idToken)
     return token
   }
 
   /**
-	 * Adds a passkey for the specified username using FIDO2 create operation.
-	 *
-	 * @param {string} username - The username of the Cognito user.
-	 * @param {string} idToken (optional) - The Cognito ID token associated with the user.
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Adds a passkey for the specified username using FIDO2 create operation.
+   *
+   * @param {string} username - The username of the Cognito user.
+   * @param {string} idToken (optional) - The Cognito ID token associated with the user.
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   public async addPasskey(
     username: string,
     idToken?: string,
@@ -96,12 +96,12 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Signs in with a passkey for the specified username using FIDO2 get operation.
-	 *
-	 * @param {string} username - The username of the Cognito user.
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Signs in with a passkey for the specified username using FIDO2 get operation.
+   *
+   * @param {string} username - The username of the Cognito user.
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   public async signInPasskey(
     username: string,
     options?: CustomAuthenticationOptions,
@@ -110,16 +110,16 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Signs in using an access token for the specified username.
-	 *
-	 * This method performs a custom authentication process using an access token. 
-	 * The access token, typically a JWT, is used to authenticate the user without 
-	 * requiring their username and password, providing a secure and streamlined login experience.
-	 *
-	 * @param {string} accessJwt - The access token (JWT) associated with the user.
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Signs in using an access token for the specified username.
+   *
+   * This method performs a custom authentication process using an access token. 
+   * The access token, typically a JWT, is used to authenticate the user without 
+   * requiring their username and password, providing a secure and streamlined login experience.
+   *
+   * @param {string} accessJwt - The access token (JWT) associated with the user.
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   private async signInWithAccessToken(
     accessJwt: string,
     options?: CustomAuthenticationOptions
@@ -134,15 +134,15 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Signs in with conditional UI using LoginID SDK.
-	 *
-	 * This method initiates a sign-in process with conditional UI elements 
-	 * using the LoginID SDK. It leverages FIDO2 WebAuthn to provide a secure, 
-	 * usernameless authentication.
-	 *
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Signs in with conditional UI using LoginID SDK.
+   *
+   * This method initiates a sign-in process with conditional UI elements 
+   * using the LoginID SDK. It leverages FIDO2 WebAuthn to provide a secure, 
+   * usernameless authentication.
+   *
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   public async signInWithConditionalUI(
     options?: CustomAuthenticationOptions
   ): Promise<CognitoUserSession> {
@@ -156,15 +156,15 @@ class LoginIDCognitoWebSDK {
 
 
   /**
-	 * Signs in with passkey autofill (conditional) UI using LoginID SDK.
-	 *
-	 * This method initiates a sign-in process with conditional UI elements 
-	 * using the LoginID SDK. It leverages FIDO2 WebAuthn to provide a secure, 
-	 * usernameless authentication.
-	 *
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
-	 */
+   * Signs in with passkey autofill (conditional) UI using LoginID SDK.
+   *
+   * This method initiates a sign-in process with conditional UI elements 
+   * using the LoginID SDK. It leverages FIDO2 WebAuthn to provide a secure, 
+   * usernameless authentication.
+   *
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession>} - A promise resolving to the Cognito user session.
+   */
   public async signInWithPasskeyAutofill(
     options?: CustomAuthenticationOptions
   ): Promise<CognitoUserSession> {
@@ -190,15 +190,15 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Initializes the email OTP authentication process for a user.
-	 *
-	 * This method initiates the email OTP authentication process for a given email address.
-	 * It sets the current Cognito user and prepares them for completing the OTP verification.
-	 *
-	 * @param {string} email - The email address of the user.
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<null>} - A promise resolving to null upon successful initialization.
-	 */
+   * Initializes the email OTP authentication process for a user.
+   *
+   * This method initiates the email OTP authentication process for a given email address.
+   * It sets the current Cognito user and prepares them for completing the OTP verification.
+   *
+   * @param {string} email - The email address of the user.
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<null>} - A promise resolving to null upon successful initialization.
+   */
   public async initializeEmailOTP(
     email: string, options?: CustomAuthenticationOptions
   ): Promise<null> {
@@ -212,16 +212,16 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Completes the email OTP authentication process for a user.
-	 *
-	 * This method completes the email OTP authentication process by verifying the OTP provided by the user.
-	 * It finalizes the custom authentication and returns the user session.
-	 *
-	 * @param {string} otp - The one-time password (OTP) received by the user via email.
-	 * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
-	 * @returns {Promise<CognitoUserSession | null>} - A promise resolving to the Cognito user session or null if authentication fails.
-	 * @throws {Error} - Throws an error if no user is initialized for email OTP.
-	 */
+   * Completes the email OTP authentication process for a user.
+   *
+   * This method completes the email OTP authentication process by verifying the OTP provided by the user.
+   * It finalizes the custom authentication and returns the user session.
+   *
+   * @param {string} otp - The one-time password (OTP) received by the user via email.
+   * @param {CustomAuthenticationOptions} options - Additional options for custom authentication.
+   * @returns {Promise<CognitoUserSession | null>} - A promise resolving to the Cognito user session or null if authentication fails.
+   * @throws {Error} - Throws an error if no user is initialized for email OTP.
+   */
   public async completeEmailOTP(
     otp: string, options?: CustomAuthenticationOptions
   ): Promise<CognitoUserSession | null> {
@@ -237,73 +237,111 @@ class LoginIDCognitoWebSDK {
   }
 
   /**
-	 * Lists all passkeys for a given user.
-	 *
-	 * This method retrieves a collection of passkeys associated with the provided Cognito
-	 * idToken. It interacts with the passkey API to fetch the list.
-	 *
-	 * @param {string} idToken - The Cognito ID token of the user.
-	 * @returns {Promise<PasskeyCollection>} - A promise resolving to a collection of passkeys data.
-	 */
+   * Lists all passkeys for a given user.
+   *
+   * This method retrieves a collection of passkeys associated with the provided Cognito
+   * idToken. It interacts with the passkey API to fetch the list.
+   *
+   * @param {string} idToken - The Cognito ID token of the user.
+   * @returns {Promise<PasskeyCollection>} - A promise resolving to a collection of passkeys data.
+   */
   public async listPasskeys(
     idToken?: string
   ): Promise<PasskeyCollection> {
     const lidToken = await this.getLoginIDToken(idToken || null)
-    return await this.lid.listPasskeys({token: lidToken})
+    return await this.lid.listPasskeys({ token: lidToken })
   }
 
   /**
-	 * Renames a specified passkey.
-	 *
-	 * This method updates the name of a passkey identified by the passkeyId.
-	 * It requires the user's Cognito idToken and the new name for the passkey.
-	 *
-	 * @param {string} passkeyId - The unique identifier of the passkey.
-	 * @param {string} name - The new name for the passkey.
-	 * @param {string} idToken - The Cognito ID token of the user.
-	 * @returns {Promise<null>} - A promise resolving to null upon successful renaming.
-	 */
+   * Renames a specified passkey.
+   *
+   * This method updates the name of a passkey identified by the passkeyId.
+   * It requires the user's Cognito idToken and the new name for the passkey.
+   *
+   * @param {string} passkeyId - The unique identifier of the passkey.
+   * @param {string} name - The new name for the passkey.
+   * @param {string} idToken - The Cognito ID token of the user.
+   * @returns {Promise<null>} - A promise resolving to null upon successful renaming.
+   */
   public async renamePasskey(
     passkeyId: string,
     name: string,
     idToken?: string,
   ): Promise<null> {
     const lidToken = await this.getLoginIDToken(idToken || null)
-    return await this.lid.renamePasskey(passkeyId, name, {token: lidToken})
+    return await this.lid.renamePasskey(passkeyId, name, { token: lidToken })
   }
 
   /**
-	 * Deletes a specified passkey.
-	 *
-	 * This method removes a passkey identified by the passkeyId from the user's account.
-	 * It requires the user's Cognito idToken and the unique identifier of the passkey.
-	 *
-	 * @param {string} passkeyId - The unique identifier of the passkey.
-	 * @param {string} idToken - The Cognito ID token of the user.
-	 * @returns {Promise<null>} - A promise resolving to null upon successful deletion.
-	 */
+   * Deletes a specified passkey.
+   *
+   * This method removes a passkey identified by the passkeyId from the user's account.
+   * It requires the user's Cognito idToken and the unique identifier of the passkey.
+   *
+   * @param {string} passkeyId - The unique identifier of the passkey.
+   * @param {string} idToken - The Cognito ID token of the user.
+   * @returns {Promise<null>} - A promise resolving to null upon successful deletion.
+   */
   public async deletePasskey(
     passkeyId: string,
     idToken?: string,
   ): Promise<null> {
     const lidToken = await this.getLoginIDToken(idToken || null)
-    return await this.lid.deletePasskey(passkeyId, {token: lidToken})
+    return await this.lid.deletePasskey(passkeyId, { token: lidToken })
   }
 
   /**
-	 * signOut current user 
-	 */
+   * signOut current user 
+   */
   public signOut() {
     this.cognito.signOut()
   }
 
   /**
-	 * 
-	 * @returns current username
-	 */
+   * 
+   * @returns current username
+   */
   public getCurrentUsername(): string | null {
     return this.cognito.currentUsername()
   }
+
+  /** supporting wrapper functions for  Cognito API */
+  /**
+   * Signup with an account with password 
+   * 
+   * @param email 
+   * @param password
+   * @param confPassword
+   * @param autoSignIn - auto signin with user password after successful signup [auto confirm is required]
+   * @returns 
+   */
+  public async signUpWithPassword(email: string, password: string, confirmPassword: string, autoSignIn: boolean): Promise<CognitoUser> {
+    if (password !== confirmPassword) {
+      throw new LoginidAPIError('passwords do not match!')
+    }
+    return await this.cognito.signUp(email, password, autoSignIn)
+  }
+
+  /**
+   * Signin with password 
+   * 
+   * @param email 
+   * @param password
+   * @returns 
+   */
+  public async signInWithPassword(email: string, password: string): Promise<CognitoUserSession> {
+    return await this.cognito.signInPassword(email, password)
+  }
+
+
+  public async confirmTransaction(email: string, payload: string): Promise<TxComplete>{
+    return await this.lid.confirmTransaction(email,payload)
+  }
+
+  public hasTrustedDevice(): boolean {
+    return this.loginIDService.hasTrustedDevice()
+  }
+
 }
 
 export default LoginIDCognitoWebSDK
