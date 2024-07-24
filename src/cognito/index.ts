@@ -244,23 +244,23 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-        case CustomAuthentication.FIDO2_CREATE:
-          user.setAuthenticationFlowType('CUSTOM_AUTH')
-          user.initiateAuth(authenticationDetails, callbackCreateObj)
-          break
+      case CustomAuthentication.FIDO2_CREATE:
+        user.setAuthenticationFlowType('CUSTOM_AUTH')
+        user.initiateAuth(authenticationDetails, callbackCreateObj)
+        break
 
-        case CustomAuthentication.FIDO2_GET:
-          user.setAuthenticationFlowType('CUSTOM_AUTH')
-          user.initiateAuth(authenticationDetails, callbackGetObj)
-          break
+      case CustomAuthentication.FIDO2_GET:
+        user.setAuthenticationFlowType('CUSTOM_AUTH')
+        user.initiateAuth(authenticationDetails, callbackGetObj)
+        break
 
-        case CustomAuthentication.ACCESS_JWT:
-          user.setAuthenticationFlowType('CUSTOM_AUTH')
-          user.initiateAuth(authenticationDetails, callbackJWTObj)
-          break
+      case CustomAuthentication.ACCESS_JWT:
+        user.setAuthenticationFlowType('CUSTOM_AUTH')
+        user.initiateAuth(authenticationDetails, callbackJWTObj)
+        break
 
-        default:
-          throw new Error('Invalid custom authentication type')
+      default:
+        throw new Error('Invalid custom authentication type')
       }
     })
   }
@@ -328,13 +328,13 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-        case CustomAuthentication.EMAIL_OTP:
-          user.setAuthenticationFlowType('CUSTOM_AUTH')
-          user.initiateAuth(authenticationDetails, callbackEmailOTP)
-          break
+      case CustomAuthentication.EMAIL_OTP:
+        user.setAuthenticationFlowType('CUSTOM_AUTH')
+        user.initiateAuth(authenticationDetails, callbackEmailOTP)
+        break
 
-        default:
-          throw new Error('Invalid custom authentication type')
+      default:
+        throw new Error('Invalid custom authentication type')
       }
     })
   }
