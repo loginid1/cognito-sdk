@@ -58,7 +58,7 @@ class LoginIDCognitoWebSDK {
     }
 
     // Check if LoginID token is available in cookies
-    const jwtAccess = this.lid.session.getJwtCookie()
+    const jwtAccess = this.lid.getJwtCookie()
     if (jwtAccess) {
       return jwtAccess
     }
