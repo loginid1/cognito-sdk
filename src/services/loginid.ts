@@ -1,7 +1,25 @@
+/*
+ *   Copyright (c) 2024 LoginID Inc
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 import HTTP from './http'
 import { LoginidAPIError } from '../errors'
-import { AuthCompleteRequestBody, AuthInit, AuthInitRequestBody, DeviceInfo, PasskeyCollection, PasskeyResult, RegCompleteRequestBody, RegInit, RegInitRequestBody } from '@loginid/websdk3'
-import { CognitoWebhookResponse } from './models/loginid'
+import { PasskeyCollection } from '@loginid/websdk3'
+import { CognitoWebhookResponse, JWT } from './models/loginid'
+import { LoginIDAPI } from '@loginid/websdk3'
 /**
  * API class for handling LoginID FIDO2 service.
  *
@@ -89,11 +107,11 @@ class LoginIDService extends HTTP {
   /**
      * Initiates the passkey registration process.
      *
-     * @returns {Promise<RegInit>} - A promise resolving to the registration initiation response for passkeys.
+     * @returns {Promise<LoginIDAPI.RegInit>} - A promise resolving to the registration initiation response for passkeys.
      */
-  async passkeyRegInit(request: RegInitRequestBody, token: string): Promise<RegInit> {
+  async passkeyRegInit(request: LoginIDAPI.RegInitRequestBody, token: string): Promise<LoginIDAPI.RegInit> {
     return this.execute(async () => {
-      return await this.post<RegInit>('/fido2/v2/reg/init', request, this.setBearerToken(token))
+      return await this.post<LoginIDAPI.RegInit>('/fido2/v2/reg/init', request, this.setBearerToken(token))
     })
   }
 
@@ -101,34 +119,34 @@ class LoginIDService extends HTTP {
      * Completes the passkey registration process.
      *
      * @param {RegCompleteRequestBody} body - The request body containing the registration completion details.
-     * @returns {Promise<PasskeyResult>} - A promise resolving to the registration completion result.
+     * @returns {Promise<AuthResult>} - A promise resolving to the registration completion result.
      */
-  async passkeyRegComplete(body: RegCompleteRequestBody): Promise<PasskeyResult> {
+  async passkeyRegComplete(body: LoginIDAPI.RegCompleteRequestBody): Promise<JWT> {
     return this.execute(async () => {
-      return await this.post<PasskeyResult>('/fido2/v2/reg/complete', body)
+      return await this.post<JWT>('/fido2/v2/reg/complete', body)
     })
   }
 
   /**
      * Initiates the passkey authentication process.
      *
-     * @returns {Promise<AuthInit>} - A promise resolving to the authentication initiation response for passkeys.
+     * @returns {Promise<LoginIDAPI.AuthInit>} - A promise resolving to the authentication initiation response for passkeys.
      */
-  async passkeyAuthInit(request: AuthInitRequestBody): Promise<AuthInit> {
+  async passkeyAuthInit(request: LoginIDAPI.AuthInitRequestBody): Promise<LoginIDAPI.AuthInit> {
     return this.execute(async () => {
-      return await this.post<AuthInit>('/fido2/v2/auth/init', request)
+      return await this.post<LoginIDAPI.AuthInit>('/fido2/v2/auth/init', request)
     })
   }
 
   /**
      * Completes the passkey authentication process.
      *
-     * @param {AuthCompleteRequestBody} body - The request body containing the authentication completion details.
+     * @param {LoginIDAPI.AuthCompleteRequestBody} body - The request body containing the authentication completion details.
      * @returns {Promise<PasskeyResult>} - A promise resolving to the authentication completion result.
      */
-  async passkeyAuthComplete(body: AuthCompleteRequestBody): Promise<PasskeyResult> {
+  async passkeyAuthComplete(body: LoginIDAPI.AuthCompleteRequestBody): Promise<JWT> {
     return this.execute(async () => {
-      return await this.post<PasskeyResult>('/fido2/v2/auth/complete', body)
+      return await this.post<JWT>('/fido2/v2/auth/complete', body)
     })
   }
 
@@ -172,16 +190,22 @@ class LoginIDService extends HTTP {
   }
 
 
-  public getDeviceInfo(username: string): DeviceInfo {
-    const device: DeviceInfo = {
+  public getDeviceInfo(username: string): LoginIDAPI.DeviceInfo {
+    const device: LoginIDAPI.DeviceInfo = {
       clientType: 'browser',
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
+      clientName: '',
+      clientVersion: '',
+      osName: '',
+      osVersion: '',
+      osArch: '',
     }
-
-    const deviceId = this.getTrustedDevice(username)
-    if (deviceId) {
-      device.deviceId = deviceId
+    if(username) {
+      const deviceId = this.getTrustedDevice(username)
+      if (deviceId) {
+        device.deviceId = deviceId
+      }
     }
 
 
