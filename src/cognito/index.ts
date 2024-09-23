@@ -1,7 +1,24 @@
-import LoginIDSDK, { AuthInitRequestBody } from '@loginid/websdk3'
+/*
+ *   Copyright (c) 2024 LoginID Inc
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+import { LoginIDAPI, WebAuthnHelper } from '@loginid/websdk3'
 import LoginIDService from '../services/loginid'
 import { defaultDeviceInfo, getUserAgent } from '../utils/browser'
-import { CustomAuthenticationOptions, DEFAULT_MATCH_THRESHOLD, InnerOptions } from './types'
+import { AuthResult, CustomAuthenticationOptions, InnerOptions } from './types'
 import {
   AuthenticationDetails,
   CognitoUser,
@@ -31,7 +48,6 @@ export enum CustomAuthentication {
 class Cognito {
   private userPool: CognitoUserPool
   private lidService: LoginIDService
-  private lid: LoginIDSDK
 
   /**
    * Constructor for the Cognito class.
@@ -39,9 +55,8 @@ class Cognito {
    * @param {string} userPoolId - The ID of the Cognito User Pool.
    * @param {string} clientId - The client ID associated with the User Pool.
    */
-  constructor(service: LoginIDService, lid: LoginIDSDK, userPoolId: string, clientId: string) {
+  constructor(service: LoginIDService, userPoolId: string, clientId: string) {
     this.lidService = service
-    this.lid = lid
     this.userPool = new CognitoUserPool({
       UserPoolId: userPoolId,
       ClientId: clientId,
@@ -64,9 +79,8 @@ class Cognito {
     token: string,
     type: CustomAuthentication,
     options: CustomAuthenticationOptions,
-  ): Promise<CognitoUserSession> {
+  ): Promise<AuthResult> {
     return new Promise((resolve, reject) => {
-      const lid = this.lid
       const lidService = this.lidService
 
       const lowerUsername = username.toLowerCase()
@@ -115,16 +129,16 @@ class Cognito {
           if (options.abortController && !options.abortController.signal.aborted) {
             // abort current controller to allow new passkey creation
             options.abortController.abort()
-            console.log('abort webauthn create')
           }
-          const publicKey = await lid.createNavigatorCredential(init)
+          //const publicKey = await lid.createNavigatorCredential(init)
+          const publicKey = await WebAuthnHelper.createNavigatorCredential(init)
           const { jwtAccess, deviceID } = await lidService.passkeyRegComplete(publicKey)
           // store trusted deviceID
           if (deviceID) {
             lidService.saveTrustedDevice(username, deviceID)
           }
 
-          lid.setJwtCookie(jwtAccess)
+          //lid.setJwtCookie(jwtAccess)
 
           user.sendCustomChallengeAnswer(
             jwtAccess,
@@ -134,7 +148,14 @@ class Cognito {
         },
 
         onSuccess: function (session: CognitoUserSession) {
-          resolve(session)
+          const aresult: AuthResult = {
+            idToken: session.getIdToken().getJwtToken(),
+            accessToken: session.getAccessToken().getJwtToken(),
+            refreshToken: session.getRefreshToken().getToken(),
+            isAuthenticated: true,
+            isFallback: false,
+          }
+          resolve(aresult)
         },
 
         onFailure: function (err) {
@@ -153,7 +174,7 @@ class Cognito {
           }
 
 
-          const auth_init_request = <AuthInitRequestBody>{
+          const auth_init_request = <LoginIDAPI.AuthInitRequestBody>{
             app: { id: lidService.getAppId() },
             user: { username: username, usernameType: 'email' },
             deviceInfo: lidService.getDeviceInfo(username),
@@ -162,17 +183,18 @@ class Cognito {
           try {
 
             const auth_init_result = await lidService.passkeyAuthInit(auth_init_request)
-            const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
-            const match = auth_init_result.matchScore || 0
+            //const match_threshold = options.matchThreshold || DEFAULT_MATCH_THRESHOLD
             const hasAutofill = lidService.getHasAutofill(username)
 
-            if (!hasAutofill && match < match_threshold) {
-              // fallback here?
-              if (options.fallback) {
-                options.fallback.onFallback(username, auth_init_result.fallbackOptions || [])
-              } else {
-                reject(new LoginidAPIError('no passkey detected', 'ERROR_FALLBACK'))
+            if (!hasAutofill && auth_init_result.action !== 'proceed') {
+              const aresult: AuthResult = {
+                idToken: '',
+                accessToken: '',
+                isAuthenticated: false,
+                isFallback: true,
+                fallbackOptions: auth_init_result.fallbackMethods
               }
+              resolve(aresult)
 
             } else {
               if (options.abortController && !options.abortController.signal.aborted) {
@@ -181,7 +203,8 @@ class Cognito {
                 console.log('abort webauthn get')
               }
 
-              const webauthn_result = await lid.getNavigatorCredential(auth_init_result)
+              const webauthn_result = await WebAuthnHelper.getNavigatorCredential(auth_init_result)
+              //const webauthn_result = await lid.getNavigatorCredential(auth_init_result)
               const jwt = await lidService.passkeyAuthComplete(webauthn_result)
 
               user.sendCustomChallengeAnswer(
@@ -195,12 +218,7 @@ class Cognito {
           } catch (e) {
             if (e instanceof LoginidAPIError) {
               if (e.msgCode === 'not_found') {
-                if (options.fallback) {
-                  options.fallback.onFallback(username, [])
-                } else {
-                  reject(new LoginidAPIError('no passkey detected', 'ERROR_FALLBACK'))
-                }
-
+                reject(new LoginidAPIError('no passkey detected', 'ERROR_FALLBACK'))
               }
             }
 
@@ -210,7 +228,14 @@ class Cognito {
         },
 
         onSuccess: function (session: CognitoUserSession) {
-          resolve(session)
+          const aresult: AuthResult = {
+            idToken: session.getIdToken().getJwtToken(),
+            accessToken: session.getAccessToken().getJwtToken(),
+            refreshToken: session.getRefreshToken().getToken(),
+            isAuthenticated: true,
+            isFallback: false,
+          }
+          resolve(aresult)
         },
 
         onFailure: function (err) {
@@ -234,7 +259,14 @@ class Cognito {
         },
 
         onSuccess: function (session: CognitoUserSession) {
-          resolve(session)
+          const aresult: AuthResult = {
+            idToken: session.getIdToken().getJwtToken(),
+            accessToken: session.getAccessToken().getJwtToken(),
+            refreshToken: session.getRefreshToken().getToken(),
+            isAuthenticated: true,
+            isFallback: false,
+          }
+          resolve(aresult)
         },
 
         onFailure: function (err) {
@@ -244,23 +276,23 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-      case CustomAuthentication.FIDO2_CREATE:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackCreateObj)
-        break
+        case CustomAuthentication.FIDO2_CREATE:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackCreateObj)
+          break
 
-      case CustomAuthentication.FIDO2_GET:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackGetObj)
-        break
+        case CustomAuthentication.FIDO2_GET:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackGetObj)
+          break
 
-      case CustomAuthentication.ACCESS_JWT:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackJWTObj)
-        break
+        case CustomAuthentication.ACCESS_JWT:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackJWTObj)
+          break
 
-      default:
-        throw new Error('Invalid custom authentication type')
+        default:
+          throw new Error('Invalid custom authentication type')
       }
     })
   }
@@ -328,13 +360,13 @@ class Cognito {
 
       // Initiating custom authentication based on the specified type
       switch (type) {
-      case CustomAuthentication.EMAIL_OTP:
-        user.setAuthenticationFlowType('CUSTOM_AUTH')
-        user.initiateAuth(authenticationDetails, callbackEmailOTP)
-        break
+        case CustomAuthentication.EMAIL_OTP:
+          user.setAuthenticationFlowType('CUSTOM_AUTH')
+          user.initiateAuth(authenticationDetails, callbackEmailOTP)
+          break
 
-      default:
-        throw new Error('Invalid custom authentication type')
+        default:
+          throw new Error('Invalid custom authentication type')
       }
     })
   }
@@ -352,7 +384,7 @@ class Cognito {
     answer: string,
     type: CustomAuthentication,
     options: CustomAuthenticationOptions,
-  ): Promise<CognitoUserSession | null> {
+  ): Promise<AuthResult> {
     return new Promise((resolve, reject) => {
       const metaData = options.metaData || {}
       const clientMetadata = {
@@ -363,11 +395,18 @@ class Cognito {
       const callbackObj: IAuthenticationCallback = {
         customChallenge: async function () {
           console.log('Retry...')
-          resolve(null)
+          reject(new LoginidAPIError('error - please retry'))
         },
 
         onSuccess: function (session: CognitoUserSession) {
-          resolve(session)
+          const aresult: AuthResult = {
+            idToken: session.getIdToken().getJwtToken(),
+            accessToken: session.getAccessToken().getJwtToken(),
+            refreshToken: session.getRefreshToken().getToken(),
+            isAuthenticated: true,
+            isFallback: false,
+          }
+          resolve(aresult)
         },
 
         onFailure: function (err) {
@@ -384,7 +423,7 @@ class Cognito {
     })
   }
 
-  public async signUp(email: string, password: string, autoSignIn: boolean): Promise<CognitoUser> {
+  public async signUp(email: string, password: string, autoSignIn: boolean): Promise<AuthResult> {
 
     return new Promise((resolve, reject) => {
 
@@ -420,8 +459,16 @@ class Cognito {
                 authenticationData
               )
               result.user.authenticateUser(authenticationDetails, {
-                onSuccess: function () {
-                  resolve(result.user)
+                onSuccess: function (session: CognitoUserSession) {
+
+                  const aresult: AuthResult = {
+                    idToken: session.getIdToken().getJwtToken(),
+                    accessToken: session.getAccessToken().getJwtToken(),
+                    refreshToken: session.getRefreshToken().getToken(),
+                    isAuthenticated: true,
+                    isFallback: false,
+                  }
+                  resolve(aresult)
                 },
 
                 onFailure: function (autoSigninError) {
@@ -429,7 +476,15 @@ class Cognito {
                 },
               })
             } else {
-              resolve(result.user)
+
+              const aresult: AuthResult = {
+                idToken: '',
+                accessToken: '',
+                isAuthenticated: false,
+                isFallback: false,
+              }
+
+              resolve(aresult)
 
             }
           } else {
@@ -492,6 +547,17 @@ class Cognito {
     const user = this.userPool.getCurrentUser()
     if (user && window) {
       const key = 'CognitoIdentityServiceProvider.' + this.userPool.getClientId() + '.' + user.getUsername() + '.idToken'
+      const token = localStorage.getItem(key)
+      return token
+    }
+    return null
+  }
+
+  public getCurrentCognitoAccessToken(): string | null {
+
+    const user = this.userPool.getCurrentUser()
+    if (user && window) {
+      const key = 'CognitoIdentityServiceProvider.' + this.userPool.getClientId() + '.' + user.getUsername() + '.accessToken'
       const token = localStorage.getItem(key)
       return token
     }
